@@ -19,7 +19,7 @@ const BINARY_EXTS = new Set([
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
-function collectFiles(dir, rootDir, indent = "", lines = [], filePaths = []) {
+function collectFiles(dir, rootDir, ignoreDirs, ignoreFiles, indent = "", lines = [], filePaths = []) {
   let entries;
   try {
     entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -38,14 +38,14 @@ function collectFiles(dir, rootDir, indent = "", lines = [], filePaths = []) {
     const childIndent = indent + (isLast ? "    " : "│   ");
 
     if (entry.isDirectory()) {
-      if (IGNORE_DIRS.has(entry.name)) {
+      if (ignoreDirs.has(entry.name)) {
         lines.push(`${indent}${connector}${entry.name}/  [skipped]`);
         return;
       }
       lines.push(`${indent}${connector}${entry.name}/`);
-      collectFiles(path.join(dir, entry.name), rootDir, childIndent, lines, filePaths);
+      collectFiles(path.join(dir, entry.name), rootDir, ignoreDirs, ignoreFiles, childIndent, lines, filePaths);
     } else {
-      if (IGNORE_FILES.has(entry.name)) return;
+      if (ignoreFiles.has(entry.name)) return;
       lines.push(`${indent}${connector}${entry.name}`);
       const relPath = "/" + path.relative(rootDir, path.join(dir, entry.name)).split(path.sep).join("/");
       filePaths.push({ abs: path.join(dir, entry.name), rel: relPath });
@@ -79,18 +79,64 @@ if (args.includes("-v") || args.includes("--version")) {
   process.exit(0);
 }
 
+const ignoreDirs = new Set(IGNORE_DIRS);
+const ignoreFiles = new Set(IGNORE_FILES);
+let outputArg = null;
+
+for (let i = 0; i < args.length; i += 1) {
+  const arg = args[i];
+
+  if (arg === "--ignore-folder" || arg.startsWith("--ignore-folder=")) {
+    const value = arg.startsWith("--ignore-folder=")
+      ? arg.slice("--ignore-folder=".length)
+      : args[i + 1];
+    if (!value || value.startsWith("-")) {
+      console.error("Error: --ignore-folder requires a folder name.");
+      process.exit(1);
+    }
+    if (!arg.includes("=")) i += 1;
+    ignoreDirs.add(value);
+    continue;
+  }
+
+  if (arg === "--ignore-file" || arg.startsWith("--ignore-file=")) {
+    const value = arg.startsWith("--ignore-file=")
+      ? arg.slice("--ignore-file=".length)
+      : args[i + 1];
+    if (!value || value.startsWith("-")) {
+      console.error("Error: --ignore-file requires a file name.");
+      process.exit(1);
+    }
+    if (!arg.includes("=")) i += 1;
+    ignoreFiles.add(value);
+    continue;
+  }
+
+  if (arg.startsWith("-")) {
+    console.error(`Error: Unknown option "${arg}".`);
+    process.exit(1);
+  }
+
+  if (!outputArg) {
+    outputArg = arg;
+    continue;
+  }
+
+  console.error(`Error: Unexpected argument "${arg}".`);
+  process.exit(1);
+}
+
 const folderPath = process.cwd();
 
 const rootName = path.basename(folderPath);
 
-const outputArg = args.find(arg => !arg.startsWith("-"));
 const outputFile = outputArg
   ? path.resolve(outputArg)
   : path.join(process.cwd(), `${rootName}.txt`);
 
 console.log(`\n📂  Scanning: ${folderPath}`);
 
-const { lines: treeLines, filePaths } = collectFiles(folderPath, folderPath);
+const { lines: treeLines, filePaths } = collectFiles(folderPath, folderPath, ignoreDirs, ignoreFiles);
 
 // ── build output ──────────────────────────────────────────────────────────────
 const out = [];

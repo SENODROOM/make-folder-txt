@@ -50,6 +50,14 @@ make-folder-txt
 
 That's it. A `my-project.txt` file will be created in the same directory.
 
+Ignore specific folders/files by name:
+
+```bash
+make-folder-txt --ignore-folder logs
+make-folder-txt --ignore-file .env
+make-folder-txt --ignore-folder dist --ignore-folder coverage --ignore-file secrets.txt
+```
+
 ---
 
 ## 🎯 Real World Examples
