@@ -86,28 +86,50 @@ let outputArg = null;
 for (let i = 0; i < args.length; i += 1) {
   const arg = args[i];
 
-  if (arg === "--ignore-folder" || arg.startsWith("--ignore-folder=")) {
-    const value = arg.startsWith("--ignore-folder=")
-      ? arg.slice("--ignore-folder=".length)
-      : args[i + 1];
-    if (!value || value.startsWith("-")) {
+  if (arg === "--ignore-folder") {
+    let consumed = 0;
+    while (i + 1 < args.length && !args[i + 1].startsWith("-")) {
+      ignoreDirs.add(args[i + 1]);
+      i += 1;
+      consumed += 1;
+    }
+    if (consumed === 0) {
+      console.error("Error: --ignore-folder requires at least one folder name.");
+      process.exit(1);
+    }
+    continue;
+  }
+
+  if (arg.startsWith("--ignore-folder=")) {
+    const value = arg.slice("--ignore-folder=".length);
+    if (!value) {
       console.error("Error: --ignore-folder requires a folder name.");
       process.exit(1);
     }
-    if (!arg.includes("=")) i += 1;
     ignoreDirs.add(value);
     continue;
   }
 
-  if (arg === "--ignore-file" || arg.startsWith("--ignore-file=")) {
-    const value = arg.startsWith("--ignore-file=")
-      ? arg.slice("--ignore-file=".length)
-      : args[i + 1];
-    if (!value || value.startsWith("-")) {
+  if (arg === "--ignore-file") {
+    let consumed = 0;
+    while (i + 1 < args.length && !args[i + 1].startsWith("-")) {
+      ignoreFiles.add(args[i + 1]);
+      i += 1;
+      consumed += 1;
+    }
+    if (consumed === 0) {
+      console.error("Error: --ignore-file requires at least one file name.");
+      process.exit(1);
+    }
+    continue;
+  }
+
+  if (arg.startsWith("--ignore-file=")) {
+    const value = arg.slice("--ignore-file=".length);
+    if (!value) {
       console.error("Error: --ignore-file requires a file name.");
       process.exit(1);
     }
-    if (!arg.includes("=")) i += 1;
     ignoreFiles.add(value);
     continue;
   }

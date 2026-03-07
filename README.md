@@ -53,9 +53,10 @@ That's it. A `my-project.txt` file will be created in the same directory.
 Ignore specific folders/files by name:
 
 ```bash
-make-folder-txt --ignore-folder logs
-make-folder-txt --ignore-file .env
-make-folder-txt --ignore-folder dist --ignore-folder coverage --ignore-file secrets.txt
+make-folder-txt --ignore-folder examples extensions docs
+make-folder-txt --ignore-folder examples extensions "docs and explaination"
+make-folder-txt --ignore-folder examples extensions docs --ignore-file LICENSE
+make-folder-txt --ignore-file .env .env.local secrets.txt
 ```
 
 ---
