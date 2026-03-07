@@ -74,7 +74,7 @@ function readContent(absPath) {
 const args = process.argv.slice(2);
 
 if (args.includes("-v") || args.includes("--version")) {
-  console.log(`make-folder-txt v${version}`);
+  console.log(`v${version}`);
   console.log("Built by Muhammad Saad Amin");
   process.exit(0);
 }
