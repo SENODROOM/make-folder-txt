@@ -2,6 +2,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const { version } = require("../package.json");
 
 // ── config ────────────────────────────────────────────────────────────────────
 const IGNORE_DIRS = new Set(["node_modules", ".git", ".next", "dist", "build", ".cache"]);
@@ -70,12 +71,21 @@ function readContent(absPath) {
 
 // ── main ──────────────────────────────────────────────────────────────────────
 
+const args = process.argv.slice(2);
+
+if (args.includes("-v") || args.includes("--version")) {
+  console.log(`make-folder-txt v${version}`);
+  console.log("Built by Muhammad Saad Amin");
+  process.exit(0);
+}
+
 const folderPath = process.cwd();
 
 const rootName = path.basename(folderPath);
 
-const outputFile = process.argv[3]
-  ? path.resolve(process.argv[3])
+const outputArg = args.find(arg => !arg.startsWith("-"));
+const outputFile = outputArg
+  ? path.resolve(outputArg)
   : path.join(process.cwd(), `${rootName}.txt`);
 
 console.log(`\n📂  Scanning: ${folderPath}`);
