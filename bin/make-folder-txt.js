@@ -19,12 +19,28 @@ const BINARY_EXTS = new Set([
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
-function collectFiles(dir, rootDir, ignoreDirs, ignoreFiles, indent = "", lines = [], filePaths = []) {
+function collectFiles(
+  dir,
+  rootDir,
+  ignoreDirs,
+  ignoreFiles,
+  onlyFolders,
+  onlyFiles,
+  options = {},
+) {
+  const {
+    indent = "",
+    lines = [],
+    filePaths = [],
+    inSelectedFolder = false,
+    hasOnlyFilters = false,
+  } = options;
+
   let entries;
   try {
     entries = fs.readdirSync(dir, { withFileTypes: true });
   } catch {
-    return { lines, filePaths };
+    return { lines, filePaths, hasIncluded: false };
   }
 
   entries.sort((a, b) => {
@@ -39,20 +55,53 @@ function collectFiles(dir, rootDir, ignoreDirs, ignoreFiles, indent = "", lines 
 
     if (entry.isDirectory()) {
       if (ignoreDirs.has(entry.name)) {
-        lines.push(`${indent}${connector}${entry.name}/  [skipped]`);
+        if (!hasOnlyFilters) {
+          lines.push(`${indent}${connector}${entry.name}/  [skipped]`);
+        }
         return;
       }
-      lines.push(`${indent}${connector}${entry.name}/`);
-      collectFiles(path.join(dir, entry.name), rootDir, ignoreDirs, ignoreFiles, childIndent, lines, filePaths);
+
+      const childPath = path.join(dir, entry.name);
+      const childInSelectedFolder = inSelectedFolder || onlyFolders.has(entry.name);
+      const childLines = [];
+      const childFiles = [];
+      const child = collectFiles(
+        childPath,
+        rootDir,
+        ignoreDirs,
+        ignoreFiles,
+        onlyFolders,
+        onlyFiles,
+        {
+          indent: childIndent,
+          lines: childLines,
+          filePaths: childFiles,
+          inSelectedFolder: childInSelectedFolder,
+          hasOnlyFilters,
+        },
+      );
+
+      const explicitlySelectedFolder = hasOnlyFilters && onlyFolders.has(entry.name);
+      const shouldIncludeDir = !hasOnlyFilters || child.hasIncluded || explicitlySelectedFolder;
+
+      if (shouldIncludeDir) {
+        lines.push(`${indent}${connector}${entry.name}/`);
+        lines.push(...child.lines);
+        filePaths.push(...child.filePaths);
+      }
     } else {
       if (ignoreFiles.has(entry.name)) return;
+
+      const shouldIncludeFile = !hasOnlyFilters || inSelectedFolder || onlyFiles.has(entry.name);
+      if (!shouldIncludeFile) return;
+
       lines.push(`${indent}${connector}${entry.name}`);
       const relPath = "/" + path.relative(rootDir, path.join(dir, entry.name)).split(path.sep).join("/");
       filePaths.push({ abs: path.join(dir, entry.name), rel: relPath });
     }
   });
 
-  return { lines, filePaths };
+  return { lines, filePaths, hasIncluded: filePaths.length > 0 || lines.length > 0 };
 }
 
 function readContent(absPath) {
@@ -81,6 +130,8 @@ if (args.includes("-v") || args.includes("--version")) {
 
 const ignoreDirs = new Set(IGNORE_DIRS);
 const ignoreFiles = new Set(IGNORE_FILES);
+const onlyFolders = new Set();
+const onlyFiles = new Set();
 let outputArg = null;
 
 for (let i = 0; i < args.length; i += 1) {
@@ -134,6 +185,54 @@ for (let i = 0; i < args.length; i += 1) {
     continue;
   }
 
+  if (arg === "--only-folder") {
+    let consumed = 0;
+    while (i + 1 < args.length && !args[i + 1].startsWith("-")) {
+      onlyFolders.add(args[i + 1]);
+      i += 1;
+      consumed += 1;
+    }
+    if (consumed === 0) {
+      console.error("Error: --only-folder requires at least one folder name.");
+      process.exit(1);
+    }
+    continue;
+  }
+
+  if (arg.startsWith("--only-folder=")) {
+    const value = arg.slice("--only-folder=".length);
+    if (!value) {
+      console.error("Error: --only-folder requires a folder name.");
+      process.exit(1);
+    }
+    onlyFolders.add(value);
+    continue;
+  }
+
+  if (arg === "--only-file") {
+    let consumed = 0;
+    while (i + 1 < args.length && !args[i + 1].startsWith("-")) {
+      onlyFiles.add(args[i + 1]);
+      i += 1;
+      consumed += 1;
+    }
+    if (consumed === 0) {
+      console.error("Error: --only-file requires at least one file name.");
+      process.exit(1);
+    }
+    continue;
+  }
+
+  if (arg.startsWith("--only-file=")) {
+    const value = arg.slice("--only-file=".length);
+    if (!value) {
+      console.error("Error: --only-file requires a file name.");
+      process.exit(1);
+    }
+    onlyFiles.add(value);
+    continue;
+  }
+
   if (arg.startsWith("-")) {
     console.error(`Error: Unknown option "${arg}".`);
     process.exit(1);
@@ -158,7 +257,16 @@ const outputFile = outputArg
 
 console.log(`\n📂  Scanning: ${folderPath}`);
 
-const { lines: treeLines, filePaths } = collectFiles(folderPath, folderPath, ignoreDirs, ignoreFiles);
+const hasOnlyFilters = onlyFolders.size > 0 || onlyFiles.size > 0;
+const { lines: treeLines, filePaths } = collectFiles(
+  folderPath,
+  folderPath,
+  ignoreDirs,
+  ignoreFiles,
+  onlyFolders,
+  onlyFiles,
+  { hasOnlyFilters },
+);
 
 // ── build output ──────────────────────────────────────────────────────────────
 const out = [];

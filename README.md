@@ -59,6 +59,14 @@ make-folder-txt --ignore-folder examples extensions docs --ignore-file LICENSE
 make-folder-txt --ignore-file .env .env.local secrets.txt
 ```
 
+Include only specific folders/files by name (everything else is ignored):
+
+```bash
+make-folder-txt --only-folder src docs
+make-folder-txt --only-file package.json README.md
+make-folder-txt --only-folder src --only-file package.json
+```
+
 ---
 
 ## 🎯 Real World Examples
