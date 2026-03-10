@@ -18,7 +18,7 @@
     "cli",
     "export"
   ],
-  "author": "AnnonymousThinker",
+  "author": "Muhammad Saad Amin",
   "license": "MIT",
   "engines": {
     "node": ">=14.0.0"
