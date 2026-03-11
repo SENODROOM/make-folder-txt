@@ -252,7 +252,7 @@ for (let i = 0; i < args.length; i += 1) {
   process.exit(1);
 }
 
-
+const folderPath = process.cwd();
 const rootName = path.basename(folderPath);
 
 const outputFile = outputArg
