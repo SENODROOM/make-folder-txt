@@ -248,7 +248,7 @@ for (let i = 0; i < args.length; i += 1) {
 }
 
 const folderPath = process.cwd();
-
+console.log(`Folder path: ${folderPath}`);;
 const rootName = path.basename(folderPath);
 
 const outputFile = outputArg
