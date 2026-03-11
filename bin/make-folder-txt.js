@@ -6,7 +6,7 @@ const { version } = require("../package.json");
 
 // ── config ────────────────────────────────────────────────────────────────────
 const IGNORE_DIRS = new Set(["node_modules", ".git", ".next", "dist", "build", ".cache"]);
-const IGNORE_FILES = new Set([".DS_Store", "Thumbs.db", "desktop.ini"]);
+const IGNORE_FILES = new Set([".DS_Store", "Thumbs.db", "desktop.ini", ".txtignore"]);
 
 const BINARY_EXTS = new Set([
   ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".ico", ".svg", ".webp",
@@ -123,7 +123,9 @@ function collectFiles(
       if (ignoreFiles.has(entry.name)) return;
 
       // Check against .txtignore patterns
-      if (txtIgnore.has(entry.name)) return;
+      if (txtIgnore.has(entry.name)) {
+        return;
+      }
 
       // Ignore .txt files that match the folder name (e.g., foldername.txt)
       if (entry.name.endsWith('.txt') && entry.name === `${rootName}.txt`) return;
