@@ -172,6 +172,44 @@ if (args.includes("-v") || args.includes("--version")) {
   process.exit(0);
 }
 
+if (args.includes("--help") || args.includes("-h")) {
+  console.log(`
+make-folder-txt
+
+Dump an entire project folder into a single readable .txt file.
+
+USAGE
+  make-folder-txt [options]
+
+OPTIONS
+  --ignore-folder <names...>    Ignore specific folders by name
+  --ignore-file <names...>      Ignore specific files by name
+  --only-folder <names...>      Include only specific folders
+  --only-file <names...>        Include only specific files
+  --help, -h                    Show this help message
+  --version, -v                 Show version information
+
+EXAMPLES
+  make-folder-txt
+  make-folder-txt --ignore-folder node_modules dist
+  make-folder-txt --ignore-file .env .env.local
+  make-folder-txt --only-folder src docs
+  make-folder-txt --only-file package.json README.md
+
+.TXTIGNORE FILE
+  Create a .txtignore file in your project root to specify files/folders to ignore.
+  Works like .gitignore - supports file names, path patterns, and comments.
+  
+  Example .txtignore:
+    node_modules/
+    *.log
+    .env
+    coverage/
+    LICENSE
+`);
+  process.exit(0);
+}
+
 const ignoreDirs = new Set(IGNORE_DIRS);
 const ignoreFiles = new Set(IGNORE_FILES);
 const onlyFolders = new Set();
