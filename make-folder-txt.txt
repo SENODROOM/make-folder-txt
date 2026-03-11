@@ -1,0 +1,604 @@
+================================================================================
+START OF FOLDER: make-folder-txt
+================================================================================
+
+================================================================================
+PROJECT STRUCTURE
+================================================================================
+Root: C:\Programming\make-folder-txt
+
+make-folder-txt/
+├── .git/  [skipped]
+├── bin/
+│   └── make-folder-txt.js
+├── LICENSE
+├── package.json
+└── README.md
+
+Total files: 4
+
+================================================================================
+FILE CONTENTS
+================================================================================
+
+--------------------------------------------------------------------------------
+FILE: /bin/make-folder-txt.js
+--------------------------------------------------------------------------------
+#!/usr/bin/env node
+
+const fs = require("fs");
+const path = require("path");
+const { version } = require("../package.json");
+
+// ── config ────────────────────────────────────────────────────────────────────
+const IGNORE_DIRS = new Set(["node_modules", ".git", ".next", "dist", "build", ".cache"]);
+const IGNORE_FILES = new Set([".DS_Store", "Thumbs.db", "desktop.ini"]);
+
+const BINARY_EXTS = new Set([
+  ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".ico", ".svg", ".webp",
+  ".pdf", ".zip", ".tar", ".gz", ".rar", ".7z",
+  ".exe", ".dll", ".so", ".dylib", ".bin",
+  ".mp3", ".mp4", ".wav", ".avi", ".mov",
+  ".woff", ".woff2", ".ttf", ".eot", ".otf",
+  ".lock",
+]);
+
+// ── helpers ───────────────────────────────────────────────────────────────────
+
+function collectFiles(
+  dir,
+  rootDir,
+  ignoreDirs,
+  ignoreFiles,
+  onlyFolders,
+  onlyFiles,
+  options = {},
+) {
+  const {
+    indent = "",
+    lines = [],
+    filePaths = [],
+    inSelectedFolder = false,
+    hasOnlyFilters = false,
+  } = options;
+
+  let entries;
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return { lines, filePaths, hasIncluded: false };
+  }
+
+  entries.sort((a, b) => {
+    if (a.isDirectory() === b.isDirectory()) return a.name.localeCompare(b.name);
+    return a.isDirectory() ? -1 : 1;
+  });
+
+  entries.forEach((entry, idx) => {
+    const isLast = idx === entries.length - 1;
+    const connector = isLast ? "└── " : "├── ";
+    const childIndent = indent + (isLast ? "    " : "│   ");
+
+    if (entry.isDirectory()) {
+      if (ignoreDirs.has(entry.name)) {
+        if (!hasOnlyFilters) {
+          lines.push(`${indent}${connector}${entry.name}/  [skipped]`);
+        }
+        return;
+      }
+
+      const childPath = path.join(dir, entry.name);
+      const childInSelectedFolder = inSelectedFolder || onlyFolders.has(entry.name);
+      const childLines = [];
+      const childFiles = [];
+      const child = collectFiles(
+        childPath,
+        rootDir,
+        ignoreDirs,
+        ignoreFiles,
+        onlyFolders,
+        onlyFiles,
+        {
+          indent: childIndent,
+          lines: childLines,
+          filePaths: childFiles,
+          inSelectedFolder: childInSelectedFolder,
+          hasOnlyFilters,
+        },
+      );
+
+      const explicitlySelectedFolder = hasOnlyFilters && onlyFolders.has(entry.name);
+      const shouldIncludeDir = !hasOnlyFilters || child.hasIncluded || explicitlySelectedFolder;
+
+      if (shouldIncludeDir) {
+        lines.push(`${indent}${connector}${entry.name}/`);
+        lines.push(...child.lines);
+        filePaths.push(...child.filePaths);
+      }
+    } else {
+      if (ignoreFiles.has(entry.name)) return;
+
+      const shouldIncludeFile = !hasOnlyFilters || inSelectedFolder || onlyFiles.has(entry.name);
+      if (!shouldIncludeFile) return;
+
+      lines.push(`${indent}${connector}${entry.name}`);
+      const relPath = "/" + path.relative(rootDir, path.join(dir, entry.name)).split(path.sep).join("/");
+      filePaths.push({ abs: path.join(dir, entry.name), rel: relPath });
+    }
+  });
+
+  return { lines, filePaths, hasIncluded: filePaths.length > 0 || lines.length > 0 };
+}
+
+function readContent(absPath) {
+  const ext = path.extname(absPath).toLowerCase();
+  if (BINARY_EXTS.has(ext)) return "[binary / skipped]";
+  try {
+    const stat = fs.statSync(absPath);
+    if (stat.size > 500 * 1024) {
+      return `[file too large: ${(stat.size / 1024).toFixed(1)} KB – skipped]`;
+    }
+    return fs.readFileSync(absPath, "utf8");
+  } catch (err) {
+    return `[could not read file: ${err.message}]`;
+  }
+}
+
+// ── main ──────────────────────────────────────────────────────────────────────
+
+const args = process.argv.slice(2);
+
+if (args.includes("-v") || args.includes("--version")) {
+  console.log(`v${version}`);
+  console.log("Built by Muhammad Saad Amin");
+  process.exit(0);
+}
+
+const ignoreDirs = new Set(IGNORE_DIRS);
+const ignoreFiles = new Set(IGNORE_FILES);
+const onlyFolders = new Set();
+const onlyFiles = new Set();
+let outputArg = null;
+
+for (let i = 0; i < args.length; i += 1) {
+  const arg = args[i];
+
+  if (arg === "--ignore-folder") {
+    let consumed = 0;
+    while (i + 1 < args.length && !args[i + 1].startsWith("-")) {
+      ignoreDirs.add(args[i + 1]);
+      i += 1;
+      consumed += 1;
+    }
+    if (consumed === 0) {
+      console.error("Error: --ignore-folder requires at least one folder name.");
+      process.exit(1);
+    }
+    continue;
+  }
+
+  if (arg.startsWith("--ignore-folder=")) {
+    const value = arg.slice("--ignore-folder=".length);
+    if (!value) {
+      console.error("Error: --ignore-folder requires a folder name.");
+      process.exit(1);
+    }
+    ignoreDirs.add(value);
+    continue;
+  }
+
+  if (arg === "--ignore-file") {
+    let consumed = 0;
+    while (i + 1 < args.length && !args[i + 1].startsWith("-")) {
+      ignoreFiles.add(args[i + 1]);
+      i += 1;
+      consumed += 1;
+    }
+    if (consumed === 0) {
+      console.error("Error: --ignore-file requires at least one file name.");
+      process.exit(1);
+    }
+    continue;
+  }
+
+  if (arg.startsWith("--ignore-file=")) {
+    const value = arg.slice("--ignore-file=".length);
+    if (!value) {
+      console.error("Error: --ignore-file requires a file name.");
+      process.exit(1);
+    }
+    ignoreFiles.add(value);
+    continue;
+  }
+
+  if (arg === "--only-folder") {
+    let consumed = 0;
+    while (i + 1 < args.length && !args[i + 1].startsWith("-")) {
+      onlyFolders.add(args[i + 1]);
+      i += 1;
+      consumed += 1;
+    }
+    if (consumed === 0) {
+      console.error("Error: --only-folder requires at least one folder name.");
+      process.exit(1);
+    }
+    continue;
+  }
+
+  if (arg.startsWith("--only-folder=")) {
+    const value = arg.slice("--only-folder=".length);
+    if (!value) {
+      console.error("Error: --only-folder requires a folder name.");
+      process.exit(1);
+    }
+    onlyFolders.add(value);
+    continue;
+  }
+
+  if (arg === "--only-file") {
+    let consumed = 0;
+    while (i + 1 < args.length && !args[i + 1].startsWith("-")) {
+      onlyFiles.add(args[i + 1]);
+      i += 1;
+      consumed += 1;
+    }
+    if (consumed === 0) {
+      console.error("Error: --only-file requires at least one file name.");
+      process.exit(1);
+    }
+    continue;
+  }
+
+  if (arg.startsWith("--only-file=")) {
+    const value = arg.slice("--only-file=".length);
+    if (!value) {
+      console.error("Error: --only-file requires a file name.");
+      process.exit(1);
+    }
+    onlyFiles.add(value);
+    continue;
+  }
+
+  if (arg.startsWith("-")) {
+    console.error(`Error: Unknown option "${arg}".`);
+    process.exit(1);
+  }
+
+  if (!outputArg) {
+    outputArg = arg;
+    continue;
+  }
+
+  console.error(`Error: Unexpected argument "${arg}".`);
+  process.exit(1);
+}
+
+const folderPath = process.cwd();
+console.log(`Folder path: ${folderPath}`);;
+const rootName = path.basename(folderPath);
+
+const outputFile = outputArg
+  ? path.resolve(outputArg)
+  : path.join(process.cwd(), `${rootName}.txt`);
+
+console.log(`\n📂  Scanning: ${folderPath}`);
+
+const hasOnlyFilters = onlyFolders.size > 0 || onlyFiles.size > 0;
+const { lines: treeLines, filePaths } = collectFiles(
+  folderPath,
+  folderPath,
+  ignoreDirs,
+  ignoreFiles,
+  onlyFolders,
+  onlyFiles,
+  { hasOnlyFilters },
+);
+
+// ── build output ──────────────────────────────────────────────────────────────
+const out = [];
+const divider    = "=".repeat(80);
+const subDivider = "-".repeat(80);
+
+out.push(divider);
+out.push(`START OF FOLDER: ${rootName}`);
+out.push(divider);
+out.push("");
+
+out.push(divider);
+out.push("PROJECT STRUCTURE");
+out.push(divider);
+out.push(`Root: ${folderPath}\n`);
+out.push(`${rootName}/`);
+treeLines.forEach(l => out.push(l));
+out.push("");
+out.push(`Total files: ${filePaths.length}`);
+out.push("");
+
+out.push(divider);
+out.push("FILE CONTENTS");
+out.push(divider);
+
+filePaths.forEach(({ abs, rel }) => {
+  out.push("");
+  out.push(subDivider);
+  out.push(`FILE: ${rel}`);
+  out.push(subDivider);
+  out.push(readContent(abs));
+});
+
+out.push("");
+out.push(divider);
+out.push(`END OF FOLDER: ${rootName}`);
+out.push(divider);
+
+fs.writeFileSync(outputFile, out.join("\n"), "utf8");
+
+const sizeKB = (fs.statSync(outputFile).size / 1024).toFixed(1);
+console.log(`✅  Done!`);
+console.log(`📄  Output : ${outputFile}`);
+console.log(`📊  Size   : ${sizeKB} KB`);
+console.log(`🗂️   Files  : ${filePaths.length}\n`);
+
+
+--------------------------------------------------------------------------------
+FILE: /LICENSE
+--------------------------------------------------------------------------------
+MIT License
+
+Copyright (c) 2026 Muhammad Saad Amin @SENODROOM
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+--------------------------------------------------------------------------------
+FILE: /package.json
+--------------------------------------------------------------------------------
+{
+  "name": "make-folder-txt",
+  "version": "1.1.2",
+  "description": "Generate a single .txt file containing the full folder structure and file contents of any project, ignoring node_modules and other junk.",
+  "main": "bin/make-folder-txt.js",
+  "bin": {
+    "make-folder-txt": "bin/make-folder-txt.js"
+  },
+  "scripts": {
+    "test": "echo \"No tests yet\" && exit 0"
+  },
+  "keywords": [
+    "folder",
+    "dump",
+    "project",
+    "structure",
+    "txt",
+    "cli",
+    "export"
+  ],
+  "author": "Muhammad Saad Amin",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
+
+
+--------------------------------------------------------------------------------
+FILE: /README.md
+--------------------------------------------------------------------------------
+<div align="center">
+
+# 📁 make-folder-txt
+
+**Instantly dump your entire project into a single, readable `.txt` file.**
+
+[![npm version](https://img.shields.io/npm/v/make-folder-txt?color=crimson&style=flat-square)](https://www.npmjs.com/package/make-folder-txt)
+[![npm downloads](https://img.shields.io/npm/dm/make-folder-txt?color=orange&style=flat-square)](https://www.npmjs.com/package/make-folder-txt)
+[![license](https://img.shields.io/npm/l/make-folder-txt?color=blue&style=flat-square)](./LICENSE)
+[![node](https://img.shields.io/node/v/make-folder-txt?color=green&style=flat-square)](https://nodejs.org)
+
+Perfect for sharing your codebase with **AI tools**, **teammates**, or **code reviewers** — without zipping files or giving repo access.
+
+[Installation](#-installation) · [Usage](#-usage) · [Output Format](#-output-format) · [What Gets Skipped](#-what-gets-skipped) · [Contributing](#-contributing)
+
+</div>
+
+---
+
+## ✨ Why make-folder-txt?
+
+Ever needed to share your entire project with ChatGPT, Claude, or a teammate — but copy-pasting every file one by one is painful? **make-folder-txt** solves that in one command.
+
+- ✅ Run it from any project directory — no arguments needed
+- ✅ Generates a clean folder tree + every file's content
+- ✅ Automatically skips `node_modules`, binaries, and junk files
+- ✅ Zero dependencies — pure Node.js
+- ✅ Works on Windows, macOS, and Linux
+
+---
+
+## 📦 Installation
+
+Install globally once, use anywhere:
+
+```bash
+npm install -g make-folder-txt
+```
+
+---
+
+## 🚀 Usage
+
+Navigate into your project folder and run:
+
+```bash
+cd my-project
+make-folder-txt
+```
+
+That's it. A `my-project.txt` file will be created in the same directory.
+
+Ignore specific folders/files by name:
+
+```bash
+make-folder-txt --ignore-folder examples extensions docs
+make-folder-txt --ignore-folder examples extensions "docs and explaination"
+make-folder-txt --ignore-folder examples extensions docs --ignore-file LICENSE
+make-folder-txt --ignore-file .env .env.local secrets.txt
+```
+
+Include only specific folders/files by name (everything else is ignored):
+
+```bash
+make-folder-txt --only-folder src docs
+make-folder-txt --only-file package.json README.md
+make-folder-txt --only-folder src --only-file package.json
+```
+
+---
+
+## 🎯 Real World Examples
+
+**Sharing with an AI tool (ChatGPT, Claude, etc.):**
+
+```bash
+cd "C:\Web Development\my-app\backend"
+make-folder-txt
+# → backend.txt created, ready to paste into any AI chat
+```
+
+**On macOS / Linux:**
+
+```bash
+cd /home/user/projects/my-app
+make-folder-txt
+# → my-app.txt created
+```
+
+---
+
+## 📄 Output Format
+
+The generated `.txt` file is structured in two clear sections:
+
+```
+================================================================================
+START OF FOLDER: my-project
+================================================================================
+
+================================================================================
+PROJECT STRUCTURE
+================================================================================
+Root: C:\Web Development\my-project
+
+my-project/
+├── src/
+│   ├── controllers/
+│   │   └── userController.js
+│   ├── models/
+│   │   └── User.js
+│   └── index.js
+├── node_modules/  [skipped]
+├── package.json
+└── README.md
+
+Total files: 5
+
+================================================================================
+FILE CONTENTS
+================================================================================
+
+--------------------------------------------------------------------------------
+FILE: /src/index.js
+--------------------------------------------------------------------------------
+const express = require('express');
+...
+
+--------------------------------------------------------------------------------
+FILE: /package.json
+--------------------------------------------------------------------------------
+{
+  "name": "my-project",
+  ...
+}
+
+================================================================================
+END OF FOLDER: my-project
+================================================================================
+```
+
+---
+
+## 🚫 What Gets Skipped
+
+The tool is smart about what it ignores so your output stays clean and readable.
+
+| Category        | Details                                                        |
+| --------------- | -------------------------------------------------------------- |
+| 📁 Folders      | `node_modules`, `.git`, `.next`, `dist`, `build`, `.cache`     |
+| 🖼️ Binary files | Images (`.png`, `.jpg`, `.gif`...), fonts, videos, executables |
+| 📦 Archives     | `.zip`, `.tar`, `.gz`, `.rar`, `.7z`                           |
+| 🔤 Font files   | `.woff`, `.woff2`, `.ttf`, `.eot`, `.otf`                      |
+| 📋 Lock files   | `package-lock.json`, `yarn.lock`                               |
+| 📏 Large files  | Any file over **500 KB**                                       |
+| 🗑️ System files | `.DS_Store`, `Thumbs.db`, `desktop.ini`                        |
+
+Binary and skipped files are noted in the output as `[binary / skipped]` so you always know what was omitted.
+
+---
+
+## 🛠️ Requirements
+
+- **Node.js** v14.0.0 or higher
+- No other dependencies
+
+---
+
+## 🤝 Contributing
+
+Contributions, issues, and feature requests are welcome!
+
+1. Fork the repository
+2. Create your feature branch: `git checkout -b feature/my-feature`
+3. Commit your changes: `git commit -m 'Add my feature'`
+4. Push to the branch: `git push origin feature/my-feature`
+5. Open a Pull Request
+
+---
+
+## 👤 Author
+
+**Muhammad Saad Amin**
+
+---
+
+## 📝 License
+
+This project is licensed under the **MIT License** — feel free to use it in personal and commercial projects.
+
+---
+
+<div align="center">
+
+If this tool saved you time, consider giving it a ⭐ on npm!
+
+</div>
+
+
+================================================================================
+END OF FOLDER: make-folder-txt
+================================================================================

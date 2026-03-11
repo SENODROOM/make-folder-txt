@@ -34,6 +34,7 @@ function collectFiles(
     filePaths = [],
     inSelectedFolder = false,
     hasOnlyFilters = false,
+    rootName = "",
   } = options;
 
   let entries;
@@ -78,6 +79,7 @@ function collectFiles(
           filePaths: childFiles,
           inSelectedFolder: childInSelectedFolder,
           hasOnlyFilters,
+          rootName,
         },
       );
 
@@ -91,6 +93,9 @@ function collectFiles(
       }
     } else {
       if (ignoreFiles.has(entry.name)) return;
+
+      // Ignore .txt files that match the folder name (e.g., foldername.txt)
+      if (entry.name.endsWith('.txt') && entry.name === `${rootName}.txt`) return;
 
       const shouldIncludeFile = !hasOnlyFilters || inSelectedFolder || onlyFiles.has(entry.name);
       if (!shouldIncludeFile) return;
@@ -247,8 +252,7 @@ for (let i = 0; i < args.length; i += 1) {
   process.exit(1);
 }
 
-const folderPath = process.cwd();
-console.log(`Folder path: ${folderPath}`);;
+
 const rootName = path.basename(folderPath);
 
 const outputFile = outputArg
@@ -265,7 +269,7 @@ const { lines: treeLines, filePaths } = collectFiles(
   ignoreFiles,
   onlyFolders,
   onlyFiles,
-  { hasOnlyFilters },
+  { hasOnlyFilters, rootName },
 );
 
 // ── build output ──────────────────────────────────────────────────────────────
