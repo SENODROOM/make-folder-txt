@@ -81,8 +81,11 @@ function collectFiles(
         return;
       }
 
-      // Check against .txtignore patterns
-      if (txtIgnore.has(entry.name) || txtIgnore.has(`${entry.name}/`)) {
+      // Get relative path for .txtignore pattern matching
+      const relPathForIgnore = path.relative(rootDir, path.join(dir, entry.name)).split(path.sep).join("/");
+      
+      // Check against .txtignore patterns (both dirname and relative path)
+      if (txtIgnore.has(entry.name) || txtIgnore.has(`${entry.name}/`) || txtIgnore.has(relPathForIgnore) || txtIgnore.has(`${relPathForIgnore}/`) || txtIgnore.has(`/${relPathForIgnore}/`)) {
         if (!hasOnlyFilters) {
           lines.push(`${indent}${connector}${entry.name}/  [skipped]`);
         }
@@ -122,8 +125,11 @@ function collectFiles(
     } else {
       if (ignoreFiles.has(entry.name)) return;
 
-      // Check against .txtignore patterns
-      if (txtIgnore.has(entry.name)) {
+      // Get relative path for .txtignore pattern matching
+      const relPathForIgnore = path.relative(rootDir, path.join(dir, entry.name)).split(path.sep).join("/");
+      
+      // Check against .txtignore patterns (both filename and relative path)
+      if (txtIgnore.has(entry.name) || txtIgnore.has(relPathForIgnore) || txtIgnore.has(`/${relPathForIgnore}`)) {
         return;
       }
 
