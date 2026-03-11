@@ -59,6 +59,25 @@ make-folder-txt --ignore-folder examples extensions docs --ignore-file LICENSE
 make-folder-txt --ignore-file .env .env.local secrets.txt
 ```
 
+Use a `.txtignore` file (works like `.gitignore`):
+
+```bash
+# Create a .txtignore file in your project root
+echo "node_modules/" > .txtignore
+echo "*.log" >> .txtignore
+echo ".env" >> .txtignore
+echo "coverage/" >> .txtignore
+
+# The tool will automatically read and respect .txtignore patterns
+make-folder-txt
+```
+
+The `.txtignore` file supports:
+- File and folder names (one per line)
+- Wildcard patterns (`*.log`, `temp-*`)
+- Comments (lines starting with `#`)
+- Folder patterns with trailing slash (`docs/`)
+
 Include only specific folders/files by name (everything else is ignored):
 
 ```bash
@@ -155,6 +174,7 @@ The tool is smart about what it ignores so your output stays clean and readable.
 | 📏 Large files  | Any file over **500 KB**                                       |
 | 🗑️ System files | `.DS_Store`, `Thumbs.db`, `desktop.ini`                        |
 | 📄 Output file  | The generated `foldername.txt` file (to avoid infinite loops)   |
+| 📝 .txtignore   | Any files/folders specified in `.txtignore` file               |
 
 Binary and skipped files are noted in the output as `[binary / skipped]` so you always know what was omitted.
 

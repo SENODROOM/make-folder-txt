@@ -19,6 +19,24 @@ const BINARY_EXTS = new Set([
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
+function readTxtIgnore(rootDir) {
+  const txtIgnorePath = path.join(rootDir, '.txtignore');
+  const ignorePatterns = new Set();
+  
+  try {
+    const content = fs.readFileSync(txtIgnorePath, 'utf8');
+    const lines = content.split('\n')
+      .map(line => line.trim())
+      .filter(line => line && !line.startsWith('#'));
+    
+    lines.forEach(line => ignorePatterns.add(line));
+  } catch (err) {
+    // .txtignore doesn't exist or can't be read - that's fine
+  }
+  
+  return ignorePatterns;
+}
+
 function collectFiles(
   dir,
   rootDir,
@@ -35,6 +53,7 @@ function collectFiles(
     inSelectedFolder = false,
     hasOnlyFilters = false,
     rootName = "",
+    txtIgnore = new Set(),
   } = options;
 
   let entries;
@@ -62,6 +81,14 @@ function collectFiles(
         return;
       }
 
+      // Check against .txtignore patterns
+      if (txtIgnore.has(entry.name) || txtIgnore.has(`${entry.name}/`)) {
+        if (!hasOnlyFilters) {
+          lines.push(`${indent}${connector}${entry.name}/  [skipped]`);
+        }
+        return;
+      }
+
       const childPath = path.join(dir, entry.name);
       const childInSelectedFolder = inSelectedFolder || onlyFolders.has(entry.name);
       const childLines = [];
@@ -80,6 +107,7 @@ function collectFiles(
           inSelectedFolder: childInSelectedFolder,
           hasOnlyFilters,
           rootName,
+          txtIgnore,
         },
       );
 
@@ -93,6 +121,9 @@ function collectFiles(
       }
     } else {
       if (ignoreFiles.has(entry.name)) return;
+
+      // Check against .txtignore patterns
+      if (txtIgnore.has(entry.name)) return;
 
       // Ignore .txt files that match the folder name (e.g., foldername.txt)
       if (entry.name.endsWith('.txt') && entry.name === `${rootName}.txt`) return;
@@ -255,6 +286,9 @@ for (let i = 0; i < args.length; i += 1) {
 const folderPath = process.cwd();
 const rootName = path.basename(folderPath);
 
+// Read .txtignore file if it exists
+const txtIgnore = readTxtIgnore(folderPath);
+
 const outputFile = outputArg
   ? path.resolve(outputArg)
   : path.join(process.cwd(), `${rootName}.txt`);
@@ -269,7 +303,7 @@ const { lines: treeLines, filePaths } = collectFiles(
   ignoreFiles,
   onlyFolders,
   onlyFiles,
-  { hasOnlyFilters, rootName },
+  { hasOnlyFilters, rootName, txtIgnore },
 );
 
 // ── build output ──────────────────────────────────────────────────────────────
