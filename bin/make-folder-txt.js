@@ -389,4 +389,4 @@ const sizeKB = (fs.statSync(outputFile).size / 1024).toFixed(1);
 console.log(`✅  Done!`);
 console.log(`📄  Output : ${outputFile}`);
 console.log(`📊  Size   : ${sizeKB} KB`);
-console.log(`🗂️   Files  : ${filePaths.length}\n`);
+console.log(`🗂️  Files  : ${filePaths.length}\n`);
