@@ -11,7 +11,7 @@
 
 Perfect for sharing your codebase with **AI tools**, **teammates**, or **code reviewers** — without zipping files or giving repo access.
 
-[Installation](#-installation) · [Usage](#-usage) · [Output Format](#-output-format) · [What Gets Skipped](#-what-gets-skipped) · [Contributing](#-contributing)
+[Installation](#-installation) · [Usage](#-usage) · [Help](#-get-help) · [Output Format](#-output-format) · [What Gets Skipped](#-what-gets-skipped) · [Contributing](#-contributing)
 
 </div>
 
@@ -22,7 +22,9 @@ Perfect for sharing your codebase with **AI tools**, **teammates**, or **code re
 Ever needed to share your entire project with ChatGPT, Claude, or a teammate — but copy-pasting every file one by one is painful? **make-folder-txt** solves that in one command.
 
 - ✅ Run it from any project directory — no arguments needed
+- ✅ Built-in help system with `--help` flag
 - ✅ Generates a clean folder tree + every file's content
+- ✅ `.txtignore` support (works like `.gitignore`)
 - ✅ Automatically skips `node_modules`, binaries, and junk files
 - ✅ Zero dependencies — pure Node.js
 - ✅ Works on Windows, macOS, and Linux
@@ -49,6 +51,15 @@ make-folder-txt
 ```
 
 That's it. A `my-project.txt` file will be created in the same directory.
+
+### 📖 Get Help
+
+```bash
+make-folder-txt --help      # Show all options and examples
+make-folder-txt -h          # Short version of help
+make-folder-txt --version   # Show version info
+make-folder-txt -v          # Short version of version
+```
 
 Ignore specific folders/files by name:
 
