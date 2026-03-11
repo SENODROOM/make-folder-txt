@@ -154,6 +154,7 @@ The tool is smart about what it ignores so your output stays clean and readable.
 | 📋 Lock files   | `package-lock.json`, `yarn.lock`                               |
 | 📏 Large files  | Any file over **500 KB**                                       |
 | 🗑️ System files | `.DS_Store`, `Thumbs.db`, `desktop.ini`                        |
+| 📄 Output file  | The generated `foldername.txt` file (to avoid infinite loops)   |
 
 Binary and skipped files are noted in the output as `[binary / skipped]` so you always know what was omitted.
 
