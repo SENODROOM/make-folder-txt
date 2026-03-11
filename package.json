@@ -1,6 +1,6 @@
 {
   "name": "make-folder-txt",
-  "version": "1.4.3",
+  "version": "1.4.4",
   "description": "Generate a single .txt file containing the full folder structure and file contents of any project, ignoring node_modules and other junk.",
   "main": "bin/make-folder-txt.js",
   "bin": {
