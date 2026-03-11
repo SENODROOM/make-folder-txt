@@ -176,8 +176,10 @@ if (args.includes("--help") || args.includes("-h")) {
   console.log(` 
 \x1b[33mmake-folder-txt\x1b[0m
 Dump an entire project folder into a single readable .txt file.
+
 \x1b[33mUSAGE\x1b[0m
   make-folder-txt [options]
+
 \x1b[33mOPTIONS\x1b[0m
   --ignore-folder <names...>    Ignore specific folders by name
   --ignore-file <names...>      Ignore specific files by name
@@ -185,15 +187,18 @@ Dump an entire project folder into a single readable .txt file.
   --only-file <names...>        Include only specific files
   --help, -h                    Show this help message
   --version, -v                 Show version information
+
 \x1b[33mEXAMPLES\x1b[0m
   make-folder-txt
   make-folder-txt --ignore-folder node_modules dist
   make-folder-txt --ignore-file .env .env.local
   make-folder-txt --only-folder src docs
   make-folder-txt --only-file package.json README.md
+
 \x1b[33m.TXTIGNORE FILE\x1b[0m
   Create a .txtignore file in your project root to specify files/folders to ignore.
   Works like .gitignore - supports file names, path patterns, and comments.
+
   Example .txtignore:
     node_modules/
     *.log
@@ -389,4 +394,4 @@ const sizeKB = (fs.statSync(outputFile).size / 1024).toFixed(1);
 console.log(`✅  Done!`);
 console.log(`📄  Output : ${outputFile}`);
 console.log(`📊  Size   : ${sizeKB} KB`);
-console.log(`🗂️  Files  : ${filePaths.length}\n`);
+console.log(`🗂️   Files  : ${filePaths.length}\n`);
