@@ -1,0 +1,6 @@
+{
+  "maxFileSize": "500KB",
+  "splitMethod": "none",
+  "splitSize": "5MB",
+  "copyToClipboard": true
+}

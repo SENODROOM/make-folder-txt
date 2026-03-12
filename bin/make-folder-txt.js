@@ -41,8 +41,11 @@ function readTxtIgnore(rootDir) {
 function copyToClipboard(text) {
   try {
     if (process.platform === 'win32') {
-      // Windows
-      execSync(`echo ${JSON.stringify(text).replace(/"/g, '""')} | clip`, { stdio: 'ignore' });
+      // Windows - use PowerShell for better handling of large content
+      const tempFile = require('os').tmpdir() + '\\make-folder-txt-clipboard-temp.txt';
+      require('fs').writeFileSync(tempFile, text, 'utf8');
+      execSync(`powershell -Command "Get-Content '${tempFile}' | Set-Clipboard"`, { stdio: 'ignore' });
+      require('fs').unlinkSync(tempFile);
     } else if (process.platform === 'darwin') {
       // macOS
       execSync(`echo ${JSON.stringify(text)} | pbcopy`, { stdio: 'ignore' });
@@ -61,7 +64,7 @@ function copyToClipboard(text) {
     }
     return true;
   } catch (err) {
-    console.warn('⚠️  Could not copy to clipboard:', err.message);
+    console.warn('⚠️  Could not copy to clipboard: ' + err.message);
     return false;
   }
 }
