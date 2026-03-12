@@ -617,7 +617,12 @@ for (let i = 0; i < args.length; i += 1) {
   if (arg === "--ignore-folder" || arg === "-ifo") {
     let consumed = 0;
     while (i + 1 < args.length && !args[i + 1].startsWith("-")) {
-      ignoreDirs.add(args[i + 1]);
+      // Normalize the folder name: remove backslashes, trailing slashes, and leading ./
+      let folderName = args[i + 1];
+      folderName = folderName.replace(/\\/g, '/'); // Convert backslashes to forward slashes
+      folderName = folderName.replace(/^\.?\//, ''); // Remove leading ./ or /
+      folderName = folderName.replace(/\/+$/, ''); // Remove trailing slashes
+      ignoreDirs.add(folderName);
       i += 1;
       consumed += 1;
     }
@@ -636,7 +641,12 @@ for (let i = 0; i < args.length; i += 1) {
       console.error("Error: --ignore-folder requires a folder name.");
       process.exit(1);
     }
-    ignoreDirs.add(value);
+    // Normalize the folder name
+    let folderName = value;
+    folderName = folderName.replace(/\\/g, '/'); // Convert backslashes to forward slashes
+    folderName = folderName.replace(/^\.?\//, ''); // Remove leading ./ or /
+    folderName = folderName.replace(/\/+$/, ''); // Remove trailing slashes
+    ignoreDirs.add(folderName);
     continue;
   }
 
@@ -669,7 +679,12 @@ for (let i = 0; i < args.length; i += 1) {
   if (arg === "--only-folder" || arg === "-ofo") {
     let consumed = 0;
     while (i + 1 < args.length && !args[i + 1].startsWith("-")) {
-      onlyFolders.add(args[i + 1]);
+      // Normalize the folder name
+      let folderName = args[i + 1];
+      folderName = folderName.replace(/\\/g, '/'); // Convert backslashes to forward slashes
+      folderName = folderName.replace(/^\.?\//, ''); // Remove leading ./ or /
+      folderName = folderName.replace(/\/+$/, ''); // Remove trailing slashes
+      onlyFolders.add(folderName);
       i += 1;
       consumed += 1;
     }
@@ -688,7 +703,12 @@ for (let i = 0; i < args.length; i += 1) {
       console.error("Error: --only-folder requires a folder name.");
       process.exit(1);
     }
-    onlyFolders.add(value);
+    // Normalize the folder name
+    let folderName = value;
+    folderName = folderName.replace(/\\/g, '/'); // Convert backslashes to forward slashes
+    folderName = folderName.replace(/^\.?\//, ''); // Remove leading ./ or /
+    folderName = folderName.replace(/\/+$/, ''); // Remove trailing slashes
+    onlyFolders.add(folderName);
     continue;
   }
 
