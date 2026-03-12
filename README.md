@@ -23,7 +23,7 @@ Ever needed to share your entire project with ChatGPT, Claude, or a teammate —
 
 - ✅ Run it from any project directory — no arguments needed
 - ✅ Built-in help system with `--help` flag
-- ✅ Shell autocompletion with `--install-completion`
+- ✅ **Built-in shell autocompletion** (installs automatically)
 - ✅ Copy to clipboard with `--copy` flag
 - ✅ Force include everything with `--force` flag
 - ✅ Generates a clean folder tree + every file's content
@@ -89,16 +89,23 @@ The `--force` flag overrides all ignore patterns and includes:
 
 Use this when you need a complete, unfiltered dump of your entire project.
 
-### ⚡ Shell Autocompletion
+### ⚡ Shell Autocompletion (Built-in)
 
 ```bash
-make-folder-txt --install-completion  # Install bash/zsh autocompletion
+make-folder-txt  # Autocompletion installs automatically on first run
 ```
 
-After installation, you'll get intelligent tab completion:
+**🎉 No installation required!** The tool automatically installs shell autocompletion the first time you run it.
+
+**What gets installed automatically:**
 - **Flag completion**: `make-folder-txt --<TAB>` shows all available flags
 - **Folder completion**: `make-folder-txt --ignore-folder <TAB>` shows folders
 - **File completion**: `make-folder-txt --ignore-file <TAB>` shows files
+
+**Supported Shells:**
+- **Bash** - Linux/macOS/Windows (WSL)
+- **Zsh** - macOS/Linux
+- **PowerShell** - Windows (7+)
 
 **Example usage:**
 ```bash
@@ -109,7 +116,22 @@ $ make-folder-txt --ignore-file p<TAB>
 # → completes to "package.json" if package.json exists
 ```
 
-The completion automatically detects your shell (bash/zsh) and installs the appropriate scripts. Restart your terminal after installation.
+**Manual Installation (if needed):**
+```bash
+make-folder-txt --install-completion  # Force reinstall completion
+```
+
+**PowerShell Manual Setup:**
+```powershell
+# If auto-installation doesn't work, load manually:
+. .\completion\make-folder-txt-completion.ps1
+
+# Or add to your PowerShell profile for persistence:
+notepad $PROFILE
+# Add: . "C:\path\to\make-folder-txt\completion\make-folder-txt-completion.ps1"
+```
+
+The completion works out of the box - just run the tool once and restart your terminal!
 
 Ignore specific folders/files by name:
 

@@ -197,6 +197,125 @@ function readContent(absPath, force = false) {
 
 const args = process.argv.slice(2);
 
+// Check if completion is already installed, install if not
+function checkAndInstallCompletion() {
+  const { execSync } = require('child_process');
+  const path = require('path');
+  const os = require('os');
+  const fs = require('fs');
+  
+  try {
+    const homeDir = os.homedir();
+    const shell = process.env.SHELL || '';
+    const platform = process.platform;
+    let completionInstalled = false;
+    
+    if (platform === 'win32') {
+      // Check PowerShell completion - try multiple profile locations
+      const profilePaths = [
+        path.join(homeDir, 'Documents', 'WindowsPowerShell', 'Microsoft.PowerShell_profile.ps1'),
+        path.join(homeDir, 'Documents', 'PowerShell', 'Microsoft.PowerShell_profile.ps1'),
+        path.join(homeDir, '.config', 'powershell', 'Microsoft.PowerShell_profile.ps1')
+      ];
+      
+      for (const profilePath of profilePaths) {
+        if (fs.existsSync(profilePath)) {
+          const profileContent = fs.readFileSync(profilePath, 'utf8');
+          if (profileContent.includes('make-folder-txt-completion')) {
+            completionInstalled = true;
+            break;
+          }
+        }
+      }
+    } else if (shell.includes('zsh')) {
+      // Check zsh completion
+      const zshrc = path.join(homeDir, '.zshrc');
+      if (fs.existsSync(zshrc)) {
+        const zshrcContent = fs.readFileSync(zshrc, 'utf8');
+        if (zshrcContent.includes('make-folder-txt')) {
+          completionInstalled = true;
+        }
+      }
+    } else {
+      // Check bash completion
+      const bashrc = path.join(homeDir, '.bashrc');
+      if (fs.existsSync(bashrc)) {
+        const bashrcContent = fs.readFileSync(bashrc, 'utf8');
+        if (bashrcContent.includes('make-folder-txt-completion')) {
+          completionInstalled = true;
+        }
+      }
+    }
+    
+    // If completion is not installed, install it automatically
+    if (!completionInstalled) {
+      console.log('🔧 Installing shell autocompletion for make-folder-txt...');
+      
+      if (platform === 'win32') {
+        // Windows PowerShell
+        try {
+          execSync('powershell -Command "Get-Host"', { stdio: 'ignore' });
+          const installScript = path.join(__dirname, '..', 'completion', 'install-powershell-completion.ps1');
+          execSync(`powershell -ExecutionPolicy Bypass -File "${installScript}"`, { stdio: 'ignore' });
+          console.log('✅ PowerShell completion installed!');
+        } catch (err) {
+          // Silent fail for PowerShell
+        }
+      } else if (shell.includes('zsh')) {
+        // zsh
+        try {
+          const zshrc = path.join(homeDir, '.zshrc');
+          const completionDir = path.join(homeDir, '.zsh', 'completions');
+          execSync(`mkdir -p "${completionDir}"`, { stdio: 'ignore' });
+          const completionPath = path.join(__dirname, '..', 'completion', 'make-folder-txt-completion.zsh');
+          execSync(`cp "${completionPath}" "${completionDir}/_make-folder-txt"`, { stdio: 'ignore' });
+          
+          try {
+            const zshrcContent = fs.readFileSync(zshrc, 'utf8');
+            if (!zshrcContent.includes('fpath+=~/.zsh/completions')) {
+              fs.appendFileSync(zshrc, '\n# make-folder-txt completion\nfpath+=~/.zsh/completions\nautoload -U compinit && compinit\n');
+            }
+          } catch (e) {
+            fs.writeFileSync(zshrc, '# make-folder-txt completion\nfpath+=~/.zsh/completions\nautoload -U compinit && compinit\n');
+          }
+          console.log('✅ Zsh completion installed!');
+        } catch (err) {
+          // Silent fail for zsh
+        }
+      } else {
+        // bash
+        try {
+          const bashrc = path.join(homeDir, '.bashrc');
+          const completionPath = path.join(__dirname, '..', 'completion', 'make-folder-txt-completion.bash');
+          try {
+            const bashrcContent = fs.readFileSync(bashrc, 'utf8');
+            if (!bashrcContent.includes('make-folder-txt-completion.bash')) {
+              fs.appendFileSync(bashrc, `\n# make-folder-txt completion\nsource "${completionPath}"\n`);
+            }
+          } catch (e) {
+            fs.writeFileSync(bashrc, `# make-folder-txt completion\nsource "${completionPath}"\n`);
+          }
+          console.log('✅ Bash completion installed!');
+        } catch (err) {
+          // Silent fail for bash
+        }
+      }
+      
+      console.log('💡 Restart your terminal to enable autocompletion');
+      console.log('');
+    }
+  } catch (err) {
+    // Silent fail - don't interrupt the main functionality
+  }
+}
+
+// Run completion check on first run (but not for help/version commands)
+if (!args.includes("--help") && !args.includes("-h") && 
+    !args.includes("--version") && !args.includes("-v") && 
+    !args.includes("--install-completion")) {
+  checkAndInstallCompletion();
+}
+
 if (args.includes("--install-completion")) {
   const { execSync } = require('child_process');
   const path = require('path');
@@ -205,8 +324,26 @@ if (args.includes("--install-completion")) {
   try {
     const homeDir = os.homedir();
     const shell = process.env.SHELL || '';
+    const platform = process.platform;
     
-    if (shell.includes('zsh')) {
+    if (platform === 'win32') {
+      // Windows - Check if PowerShell is available
+      try {
+        execSync('powershell -Command "Get-Host"', { stdio: 'ignore' });
+        
+        // Install PowerShell completion
+        const completionScript = path.join(__dirname, '..', 'completion', 'make-folder-txt-completion.ps1');
+        const installScript = path.join(__dirname, '..', 'completion', 'install-powershell-completion.ps1');
+        
+        // Run the PowerShell installation script
+        execSync(`powershell -ExecutionPolicy Bypass -File "${installScript}"`, { stdio: 'inherit' });
+        
+      } catch (err) {
+        console.error('❌ Failed to install PowerShell completion:', err.message);
+        process.exit(1);
+      }
+      
+    } else if (shell.includes('zsh')) {
       // Install for zsh
       const zshrc = path.join(homeDir, '.zshrc');
       const completionDir = path.join(homeDir, '.zsh', 'completions');
@@ -280,7 +417,7 @@ Dump an entire project folder into a single readable .txt file.
   --only-file, -ofi <names...>        Include only specific files
   --copy                              Copy output to clipboard
   --force                             Include everything (overrides all ignore patterns)
-  --install-completion                 Install shell autocompletion (bash/zsh)
+  --install-completion         Install shell autocompletion (bash/zsh/PowerShell) - usually automatic
   --help, -h                          Show this help message
   --version, -v                       Show version information
 
