@@ -1,0 +1,52 @@
+================================================================================
+START OF FOLDER: make-folder-txt
+================================================================================
+
+================================================================================
+PROJECT STRUCTURE
+================================================================================
+Root: C:\Programming\make-folder-txt
+
+make-folder-txt/
+├── package.json
+
+Total files: 1
+
+================================================================================
+FILE CONTENTS
+================================================================================
+
+--------------------------------------------------------------------------------
+FILE: /package.json
+--------------------------------------------------------------------------------
+{
+  "name": "make-folder-txt",
+  "version": "2.0.1",
+  "description": "Generate a single .txt file containing the full folder structure and file contents of any project, ignoring node_modules and other junk.",
+  "main": "bin/make-folder-txt.js",
+  "bin": {
+    "make-folder-txt": "bin/make-folder-txt.js"
+  },
+  "scripts": {
+    "test": "echo \"No tests yet\" && exit 0"
+  },
+  "keywords": [
+    "folder",
+    "dump",
+    "project",
+    "structure",
+    "txt",
+    "cli",
+    "export"
+  ],
+  "author": "Muhammad Saad Amin",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
+
+
+================================================================================
+END OF FOLDER: make-folder-txt
+================================================================================

@@ -7,7 +7,7 @@ _make_folder_txt_completion() {
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
     
-    opts="--ignore-folder -ifo --ignore-file -ifi --only-folder -ofo --only-file -ofi --copy --force --help --version -h -v"
+    opts="--ignore-folder -ifo --ignore-file -ifi --only-folder -ofo --only-file -ofi --skip-large --no-skip --copy --force --help --version -h -v"
     
     case "${prev}" in
         --ignore-folder|-ifo)
@@ -26,6 +26,12 @@ _make_folder_txt_completion() {
             # Complete with folder names in current directory
             local folders=$(ls -d */ 2>/dev/null | sed 's|/||g')
             COMPREPLY=( $(compgen -W "${folders}" -- ${cur}) )
+            return 0
+            ;;
+        --skip-large)
+            # Complete with common size formats
+            local sizes="100KB 200KB 400KB 500KB 1MB 5MB 10MB 100MB 1GB 5GB"
+            COMPREPLY=( $(compgen -W "${sizes}" -- ${cur}) )
             return 0
             ;;
         *)

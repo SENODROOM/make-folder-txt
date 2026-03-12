@@ -11,7 +11,7 @@
 
 Perfect for sharing your codebase with **AI tools**, **teammates**, or **code reviewers** — without zipping files or giving repo access.
 
-[Installation](#-installation) · [Usage](#-usage) · [Help](#-get-help) · [Copy to Clipboard](#-copy-to-clipboard) · [Force Include Everything](#-force-include-everything) · [Shell Autocompletion](#-shell-autocompletion) · [Output Format](#-output-format) · [What Gets Skipped](#-what-gets-skipped) · [Contributing](#-contributing)
+[Installation](#-installation) · [Usage](#-usage) · [Help](#-get-help) · [Copy to Clipboard](#-copy-to-clipboard) · [Force Include Everything](#-force-include-everything) · [Shell Autocompletion](#-shell-autocompletion) · [File Size Control](#-file-size-control) · [Output Format](#-output-format) · [What Gets Skipped](#-what-gets-skipped) · [Contributing](#-contributing)
 
 </div>
 
@@ -24,6 +24,7 @@ Ever needed to share your entire project with ChatGPT, Claude, or a teammate —
 - ✅ Run it from any project directory — no arguments needed
 - ✅ Built-in help system with `--help` flag
 - ✅ **Built-in shell autocompletion** (installs automatically)
+- ✅ **File size control** with `--skip-large` and `--no-skip`
 - ✅ Copy to clipboard with `--copy` flag
 - ✅ Force include everything with `--force` flag
 - ✅ Generates a clean folder tree + every file's content
@@ -132,6 +133,41 @@ notepad $PROFILE
 ```
 
 The completion works out of the box - just run the tool once and restart your terminal!
+
+### 📏 File Size Control
+
+```bash
+make-folder-txt --skip-large 400KB     # Skip files larger than 400KB
+make-folder-txt --skip-large 5GB       # Skip files larger than 5GB
+make-folder-txt --skip-large 1.5MB     # Skip files larger than 1.5MB
+make-folder-txt --no-skip               # Include all files regardless of size
+```
+
+**Default behavior**: Files larger than 500KB are skipped by default.
+
+**Supported size units**:
+- **B** - Bytes
+- **KB** - Kilobytes (1024 bytes)
+- **MB** - Megabytes (1024 KB)
+- **GB** - Gigabytes (1024 MB)
+- **TB** - Terabytes (1024 GB)
+
+**Examples:**
+```bash
+# More restrictive - skip anything over 100KB
+make-folder-txt --skip-large 100KB
+
+# More permissive - allow files up to 10MB
+make-folder-txt --skip-large 10MB
+
+# Include everything - no size limits
+make-folder-txt --no-skip
+
+# Combine with other options
+make-folder-txt --skip-large 2MB --ignore-folder node_modules
+```
+
+**Size format**: Accepts decimal numbers (e.g., `1.5MB`, `0.5GB`) and various units.
 
 Ignore specific folders/files by name:
 

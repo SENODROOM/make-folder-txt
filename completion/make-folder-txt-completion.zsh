@@ -12,6 +12,8 @@ _make_folder_txt() {
         '-ofo[Include only specific folders]:folder:_directories'
         '--only-file[Include only specific files]:file:_files'
         '-ofi[Include only specific files]:file:_files'
+        '--skip-large[Skip files larger than specified size]:size:(100KB 200KB 400KB 500KB 1MB 5MB 10MB 100MB 1GB 5GB)'
+        '--no-skip[Include all files regardless of size]'
         '--copy[Copy output to clipboard]'
         '--force[Include everything (overrides all ignore patterns)]'
         '--help[Show help message]'

@@ -179,13 +179,37 @@ function collectFiles(
   return { lines, filePaths, hasIncluded: filePaths.length > 0 || lines.length > 0 };
 }
 
-function readContent(absPath, force = false) {
+function parseFileSize(sizeStr) {
+  const units = {
+    'B': 1,
+    'KB': 1024,
+    'MB': 1024 * 1024,
+    'GB': 1024 * 1024 * 1024,
+    'TB': 1024 * 1024 * 1024 * 1024
+  };
+  
+  const match = sizeStr.match(/^(\d+(?:\.\d+)?)\s*(B|KB|MB|GB|TB)$/i);
+  if (!match) {
+    console.error(`Error: Invalid size format "${sizeStr}". Use format like "500KB", "2MB", "1GB".`);
+    process.exit(1);
+  }
+  
+  const value = parseFloat(match[1]);
+  const unit = match[2].toUpperCase();
+  return Math.floor(value * units[unit]);
+}
+
+function readContent(absPath, force = false, maxFileSize = 500 * 1024) {
   const ext = path.extname(absPath).toLowerCase();
   if (!force && BINARY_EXTS.has(ext)) return "[binary / skipped]";
   try {
     const stat = fs.statSync(absPath);
-    if (!force && stat.size > 500 * 1024) {
-      return `[file too large: ${(stat.size / 1024).toFixed(1)} KB – skipped]`;
+    if (!force && stat.size > maxFileSize) {
+      const sizeStr = stat.size < 1024 ? `${stat.size} B` : 
+                     stat.size < 1024 * 1024 ? `${(stat.size / 1024).toFixed(1)} KB` :
+                     stat.size < 1024 * 1024 * 1024 ? `${(stat.size / (1024 * 1024)).toFixed(1)} MB` :
+                     `${(stat.size / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+      return `[file too large: ${sizeStr} – skipped]`;
     }
     return fs.readFileSync(absPath, "utf8");
   } catch (err) {
@@ -415,6 +439,8 @@ Dump an entire project folder into a single readable .txt file.
   --ignore-file, -ifi <names...>      Ignore specific files by name
   --only-folder, -ofo <names...>      Include only specific folders
   --only-file, -ofi <names...>        Include only specific files
+  --skip-large <size>                 Skip files larger than specified size (default: 500KB)
+  --no-skip                           Include all files regardless of size
   --copy                              Copy output to clipboard
   --force                             Include everything (overrides all ignore patterns)
   --install-completion         Install shell autocompletion (bash/zsh/PowerShell) - usually automatic
@@ -425,6 +451,9 @@ Dump an entire project folder into a single readable .txt file.
   make-folder-txt
   make-folder-txt --copy
   make-folder-txt --force
+  make-folder-txt --skip-large 400KB
+  make-folder-txt --skip-large 5GB
+  make-folder-txt --no-skip
   make-folder-txt --install-completion
   make-folder-txt --ignore-folder node_modules dist
   make-folder-txt -ifo node_modules dist
@@ -456,6 +485,8 @@ const onlyFiles = new Set();
 let outputArg = null;
 let copyToClipboardFlag = false;
 let forceFlag = false;
+let maxFileSize = 500 * 1024; // Default 500KB
+let noSkipFlag = false;
 
 for (let i = 0; i < args.length; i += 1) {
   const arg = args[i];
@@ -467,6 +498,31 @@ for (let i = 0; i < args.length; i += 1) {
 
   if (arg === "--force") {
     forceFlag = true;
+    continue;
+  }
+
+  if (arg === "--no-skip") {
+    noSkipFlag = true;
+    continue;
+  }
+
+  if (arg === "--skip-large") {
+    if (i + 1 >= args.length || args[i + 1].startsWith("-")) {
+      console.error("Error: --skip-large requires a size value (e.g., 400KB, 5GB).");
+      process.exit(1);
+    }
+    maxFileSize = parseFileSize(args[i + 1]);
+    i += 1;
+    continue;
+  }
+
+  if (arg.startsWith("--skip-large=")) {
+    const value = arg.slice("--skip-large=".length);
+    if (!value) {
+      console.error("Error: --skip-large requires a size value (e.g., 400KB, 5GB).");
+      process.exit(1);
+    }
+    maxFileSize = parseFileSize(value);
     continue;
   }
 
@@ -636,11 +692,12 @@ out.push("FILE CONTENTS");
 out.push(divider);
 
 filePaths.forEach(({ abs, rel }) => {
-  out.push("");
-  out.push(subDivider);
-  out.push(`FILE: ${rel}`);
-  out.push(subDivider);
-  out.push(readContent(abs, forceFlag));
+out.push("");
+out.push(subDivider);
+out.push(`FILE: ${rel}`);
+out.push(subDivider);
+const effectiveMaxSize = noSkipFlag ? Infinity : maxFileSize;
+out.push(readContent(abs, forceFlag, effectiveMaxSize));
 });
 
 out.push("");
