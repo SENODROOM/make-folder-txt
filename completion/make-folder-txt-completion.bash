@@ -7,7 +7,7 @@ _make_folder_txt_completion() {
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
     
-    opts="--ignore-folder -ifo --ignore-file -ifi --only-folder -ofo --only-file -ofi --skip-large --no-skip --copy --force --help --version -h -v"
+    opts="--ignore-folder -ifo --ignore-file -ifi --only-folder -ofo --only-file -ofi --skip-large --no-skip --split-method --split-size --copy --force --help --version -h -v"
     
     case "${prev}" in
         --ignore-folder|-ifo)
@@ -31,6 +31,18 @@ _make_folder_txt_completion() {
         --skip-large)
             # Complete with common size formats
             local sizes="100KB 200KB 400KB 500KB 1MB 5MB 10MB 100MB 1GB 5GB"
+            COMPREPLY=( $(compgen -W "${sizes}" -- ${cur}) )
+            return 0
+            ;;
+        --split-method)
+            # Complete with split methods
+            local methods="folder file size"
+            COMPREPLY=( $(compgen -W "${methods}" -- ${cur}) )
+            return 0
+            ;;
+        --split-size)
+            # Complete with common size formats
+            local sizes="1MB 5MB 10MB 50MB 100MB 500MB 1GB"
             COMPREPLY=( $(compgen -W "${sizes}" -- ${cur}) )
             return 0
             ;;

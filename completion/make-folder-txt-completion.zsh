@@ -14,6 +14,8 @@ _make_folder_txt() {
         '-ofi[Include only specific files]:file:_files'
         '--skip-large[Skip files larger than specified size]:size:(100KB 200KB 400KB 500KB 1MB 5MB 10MB 100MB 1GB 5GB)'
         '--no-skip[Include all files regardless of size]'
+        '--split-method[Split output by method]:method:(folder file size)'
+        '--split-size[Split output when size exceeds limit]:size:(1MB 5MB 10MB 50MB 100MB 500MB 1GB)'
         '--copy[Copy output to clipboard]'
         '--force[Include everything (overrides all ignore patterns)]'
         '--help[Show help message]'

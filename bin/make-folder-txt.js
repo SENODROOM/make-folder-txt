@@ -217,6 +217,238 @@ function readContent(absPath, force = false, maxFileSize = 500 * 1024) {
   }
 }
 
+function splitByFolders(treeLines, filePaths, rootName, effectiveMaxSize, forceFlag) {
+  const folders = new Map();
+  
+  // Group files by folder
+  filePaths.forEach(({ abs, rel }) => {
+    const folderPath = path.dirname(rel);
+    const folderKey = folderPath === '/' ? rootName : folderPath.slice(1);
+    
+    if (!folders.has(folderKey)) {
+      folders.set(folderKey, []);
+    }
+    folders.get(folderKey).push({ abs, rel });
+  });
+  
+  const results = [];
+  
+  folders.forEach((files, folderName) => {
+    const out = [];
+    const divider = "=".repeat(80);
+    const subDivider = "-".repeat(80);
+    
+    out.push(divider);
+    out.push(`START OF FOLDER: ${folderName}`);
+    out.push(divider);
+    out.push("");
+    
+    // Add folder structure (only this folder's structure)
+    const folderTreeLines = treeLines.filter(line => 
+      line.includes(folderName + '/') || line === `${rootName}/`
+    );
+    
+    out.push(divider);
+    out.push("PROJECT STRUCTURE");
+    out.push(divider);
+    out.push(`Root: ${folderPath}\n`);
+    out.push(`${rootName}/`);
+    folderTreeLines.forEach(l => out.push(l));
+    out.push("");
+    out.push(`Total files in this folder: ${files.length}`);
+    out.push("");
+    
+    out.push(divider);
+    out.push("FILE CONTENTS");
+    out.push(divider);
+    
+    files.forEach(({ abs, rel }) => {
+      out.push("");
+      out.push(subDivider);
+      out.push(`FILE: ${rel}`);
+      out.push(subDivider);
+      out.push(readContent(abs, forceFlag, effectiveMaxSize));
+    });
+    
+    out.push("");
+    out.push(divider);
+    out.push(`END OF FOLDER: ${folderName}`);
+    out.push(divider);
+    
+    const fileName = `${rootName}-${folderName.replace(/[\/\\]/g, '-')}.txt`;
+    const filePath = path.join(process.cwd(), fileName);
+    
+    fs.writeFileSync(filePath, out.join("\n"), "utf8");
+    const sizeKB = (fs.statSync(filePath).size / 1024).toFixed(1);
+    
+    results.push({
+      file: filePath,
+      size: sizeKB,
+      files: files.length,
+      folder: folderName
+    });
+  });
+  
+  return results;
+}
+
+function splitByFiles(filePaths, rootName, effectiveMaxSize, forceFlag) {
+  const results = [];
+  
+  filePaths.forEach(({ abs, rel }) => {
+    const out = [];
+    const divider = "=".repeat(80);
+    const subDivider = "-".repeat(80);
+    const fileName = path.basename(rel, path.extname(rel));
+    
+    out.push(divider);
+    out.push(`FILE: ${rel}`);
+    out.push(divider);
+    out.push("");
+    
+    out.push(divider);
+    out.push("FILE CONTENTS");
+    out.push(divider);
+    out.push(readContent(abs, forceFlag, effectiveMaxSize));
+    
+    out.push("");
+    out.push(divider);
+    out.push(`END OF FILE: ${rel}`);
+    out.push(divider);
+    
+    const outputFileName = `${rootName}-${fileName}.txt`;
+    const filePath = path.join(process.cwd(), outputFileName);
+    
+    fs.writeFileSync(filePath, out.join("\n"), "utf8");
+    const sizeKB = (fs.statSync(filePath).size / 1024).toFixed(1);
+    
+    results.push({
+      file: filePath,
+      size: sizeKB,
+      files: 1,
+      fileName: fileName
+    });
+  });
+  
+  return results;
+}
+
+function splitBySize(treeLines, filePaths, rootName, splitSize, effectiveMaxSize, forceFlag) {
+  const results = [];
+  let currentPart = 1;
+  let currentSize = 0;
+  let currentFiles = [];
+  
+  const divider = "=".repeat(80);
+  const subDivider = "-".repeat(80);
+  
+  // Start with header
+  let out = [];
+  out.push(divider);
+  out.push(`START OF FOLDER: ${rootName} (Part ${currentPart})`);
+  out.push(divider);
+  out.push("");
+  
+  out.push(divider);
+  out.push("PROJECT STRUCTURE");
+  out.push(divider);
+  out.push(`Root: ${folderPath}\n`);
+  out.push(`${rootName}/`);
+  treeLines.forEach(l => out.push(l));
+  out.push("");
+  out.push(`Total files: ${filePaths.length}`);
+  out.push("");
+  
+  out.push(divider);
+  out.push("FILE CONTENTS");
+  out.push(divider);
+  
+  filePaths.forEach(({ abs, rel }) => {
+    const content = readContent(abs, forceFlag, effectiveMaxSize);
+    const fileContent = [
+      "",
+      subDivider,
+      `FILE: ${rel}`,
+      subDivider,
+      content
+    ];
+    
+    const contentSize = fileContent.join("\n").length;
+    
+    // Check if adding this file would exceed the split size
+    if (currentSize + contentSize > splitSize && currentFiles.length > 0) {
+      // Finish current part
+      out.push("");
+      out.push(divider);
+      out.push(`END OF FOLDER: ${rootName} (Part ${currentPart})`);
+      out.push(divider);
+      
+      // Write current part
+      const fileName = `${rootName}-part-${currentPart}.txt`;
+      const filePath = path.join(process.cwd(), fileName);
+      fs.writeFileSync(filePath, out.join("\n"), "utf8");
+      const sizeKB = (fs.statSync(filePath).size / 1024).toFixed(1);
+      
+      results.push({
+        file: filePath,
+        size: sizeKB,
+        files: currentFiles.length,
+        part: currentPart
+      });
+      
+      // Start new part
+      currentPart++;
+      currentSize = 0;
+      currentFiles = [];
+      
+      out = [];
+      out.push(divider);
+      out.push(`START OF FOLDER: ${rootName} (Part ${currentPart})`);
+      out.push(divider);
+      out.push("");
+      
+      out.push(divider);
+      out.push("PROJECT STRUCTURE");
+      out.push(divider);
+      out.push(`Root: ${folderPath}\n`);
+      out.push(`${rootName}/`);
+      treeLines.forEach(l => out.push(l));
+      out.push("");
+      out.push(`Total files: ${filePaths.length}`);
+      out.push("");
+      
+      out.push(divider);
+      out.push("FILE CONTENTS");
+      out.push(divider);
+    }
+    
+    // Add file to current part
+    out.push(...fileContent);
+    currentSize += contentSize;
+    currentFiles.push(rel);
+  });
+  
+  // Write final part
+  out.push("");
+  out.push(divider);
+  out.push(`END OF FOLDER: ${rootName} (Part ${currentPart})`);
+  out.push(divider);
+  
+  const fileName = `${rootName}-part-${currentPart}.txt`;
+  const filePath = path.join(process.cwd(), fileName);
+  fs.writeFileSync(filePath, out.join("\n"), "utf8");
+  const sizeKB = (fs.statSync(filePath).size / 1024).toFixed(1);
+  
+  results.push({
+    file: filePath,
+    size: sizeKB,
+    files: currentFiles.length,
+    part: currentPart
+  });
+  
+  return results;
+}
+
 // ── main ──────────────────────────────────────────────────────────────────────
 
 const args = process.argv.slice(2);
@@ -441,6 +673,8 @@ Dump an entire project folder into a single readable .txt file.
   --only-file, -ofi <names...>        Include only specific files
   --skip-large <size>                 Skip files larger than specified size (default: 500KB)
   --no-skip                           Include all files regardless of size
+  --split-method <method>             Split output: folder, file, or size
+  --split-size <size>                 Split output when size exceeds limit (requires --split-method size)
   --copy                              Copy output to clipboard
   --force                             Include everything (overrides all ignore patterns)
   --install-completion         Install shell autocompletion (bash/zsh/PowerShell) - usually automatic
@@ -454,6 +688,9 @@ Dump an entire project folder into a single readable .txt file.
   make-folder-txt --skip-large 400KB
   make-folder-txt --skip-large 5GB
   make-folder-txt --no-skip
+  make-folder-txt --split-method folder
+  make-folder-txt --split-method file
+  make-folder-txt --split-method size --split-size 5MB
   make-folder-txt --install-completion
   make-folder-txt --ignore-folder node_modules dist
   make-folder-txt -ifo node_modules dist
@@ -487,6 +724,8 @@ let copyToClipboardFlag = false;
 let forceFlag = false;
 let maxFileSize = 500 * 1024; // Default 500KB
 let noSkipFlag = false;
+let splitMethod = null; // 'folder', 'file', 'size'
+let splitSize = null; // size in bytes
 
 for (let i = 0; i < args.length; i += 1) {
   const arg = args[i];
@@ -523,6 +762,56 @@ for (let i = 0; i < args.length; i += 1) {
       process.exit(1);
     }
     maxFileSize = parseFileSize(value);
+    continue;
+  }
+
+  if (arg === "--split-method") {
+    if (i + 1 >= args.length || args[i + 1].startsWith("-")) {
+      console.error("Error: --split-method requires a method (folder, file, or size).");
+      process.exit(1);
+    }
+    const method = args[i + 1].toLowerCase();
+    if (!['folder', 'file', 'size'].includes(method)) {
+      console.error("Error: --split-method must be one of: folder, file, size");
+      process.exit(1);
+    }
+    splitMethod = method;
+    i += 1;
+    continue;
+  }
+
+  if (arg.startsWith("--split-method=")) {
+    const value = arg.slice("--split-method=".length);
+    if (!value) {
+      console.error("Error: --split-method requires a method (folder, file, or size).");
+      process.exit(1);
+    }
+    const method = value.toLowerCase();
+    if (!['folder', 'file', 'size'].includes(method)) {
+      console.error("Error: --split-method must be one of: folder, file, size");
+      process.exit(1);
+    }
+    splitMethod = method;
+    continue;
+  }
+
+  if (arg === "--split-size") {
+    if (i + 1 >= args.length || args[i + 1].startsWith("-")) {
+      console.error("Error: --split-size requires a size value (e.g., 5MB, 10MB).");
+      process.exit(1);
+    }
+    splitSize = parseFileSize(args[i + 1]);
+    i += 1;
+    continue;
+  }
+
+  if (arg.startsWith("--split-size=")) {
+    const value = arg.slice("--split-size=".length);
+    if (!value) {
+      console.error("Error: --split-size requires a size value (e.g., 5MB, 10MB).");
+      process.exit(1);
+    }
+    splitSize = parseFileSize(value);
     continue;
   }
 
@@ -644,6 +933,17 @@ for (let i = 0; i < args.length; i += 1) {
   process.exit(1);
 }
 
+// Validate split options
+if (splitMethod === 'size' && !splitSize) {
+  console.error("Error: --split-method size requires --split-size to be specified.");
+  process.exit(1);
+}
+
+if (splitSize && splitMethod !== 'size') {
+  console.error("Error: --split-size can only be used with --split-method size.");
+  process.exit(1);
+}
+
 const folderPath = process.cwd();
 const rootName = path.basename(folderPath);
 
@@ -667,7 +967,47 @@ const { lines: treeLines, filePaths } = collectFiles(
   { hasOnlyFilters, rootName, txtIgnore, force: forceFlag },
 );
 
-// ── build output ──────────────────────────────────────────────────────────────
+// ── handle splitting ──────────────────────────────────────────────────────────────
+const effectiveMaxSize = noSkipFlag ? Infinity : maxFileSize;
+
+if (splitMethod) {
+  console.log(`🔧 Splitting output by: ${splitMethod}`);
+  
+  let results;
+  
+  if (splitMethod === 'folder') {
+    results = splitByFolders(treeLines, filePaths, rootName, effectiveMaxSize, forceFlag);
+  } else if (splitMethod === 'file') {
+    results = splitByFiles(filePaths, rootName, effectiveMaxSize, forceFlag);
+  } else if (splitMethod === 'size') {
+    results = splitBySize(treeLines, filePaths, rootName, splitSize, effectiveMaxSize, forceFlag);
+  }
+  
+  console.log(`✅  Done! Created ${results.length} split files:`);
+  console.log('');
+  
+  results.forEach((result, index) => {
+    if (splitMethod === 'folder') {
+      console.log(`📁  Folder: ${result.folder}`);
+    } else if (splitMethod === 'file') {
+      console.log(`📄  File: ${result.fileName}`);
+    } else if (splitMethod === 'size') {
+      console.log(`📦  Part ${result.part}`);
+    }
+    console.log(`📄  Output : ${result.file}`);
+    console.log(`📊  Size   : ${result.size} KB`);
+    console.log(`🗂️   Files  : ${result.files}`);
+    console.log('');
+  });
+  
+  if (copyToClipboardFlag) {
+    console.log('⚠️  --copy flag is not compatible with splitting - clipboard copy skipped');
+  }
+  
+  process.exit(0);
+}
+
+// ── build output (no splitting) ───────────────────────────────────────────────────
 const out = [];
 const divider    = "=".repeat(80);
 const subDivider = "-".repeat(80);

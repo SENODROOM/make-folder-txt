@@ -11,7 +11,7 @@
 
 Perfect for sharing your codebase with **AI tools**, **teammates**, or **code reviewers** — without zipping files or giving repo access.
 
-[Installation](#-installation) · [Usage](#-usage) · [Help](#-get-help) · [Copy to Clipboard](#-copy-to-clipboard) · [Force Include Everything](#-force-include-everything) · [Shell Autocompletion](#-shell-autocompletion) · [File Size Control](#-file-size-control) · [Output Format](#-output-format) · [What Gets Skipped](#-what-gets-skipped) · [Contributing](#-contributing)
+[Installation](#-installation) · [Usage](#-usage) · [Help](#-get-help) · [Copy to Clipboard](#-copy-to-clipboard) · [Force Include Everything](#-force-include-everything) · [Shell Autocompletion](#-shell-autocompletion) · [File Size Control](#-file-size-control) · [Output Splitting](#-output-splitting) · [Output Format](#-output-format) · [What Gets Skipped](#-what-gets-skipped) · [Contributing](#-contributing)
 
 </div>
 
@@ -25,6 +25,7 @@ Ever needed to share your entire project with ChatGPT, Claude, or a teammate —
 - ✅ Built-in help system with `--help` flag
 - ✅ **Built-in shell autocompletion** (installs automatically)
 - ✅ **File size control** with `--skip-large` and `--no-skip`
+- ✅ **Output splitting** by folders, files, or size
 - ✅ Copy to clipboard with `--copy` flag
 - ✅ Force include everything with `--force` flag
 - ✅ Generates a clean folder tree + every file's content
@@ -168,6 +169,41 @@ make-folder-txt --skip-large 2MB --ignore-folder node_modules
 ```
 
 **Size format**: Accepts decimal numbers (e.g., `1.5MB`, `0.5GB`) and various units.
+
+### 📂 Output Splitting
+
+```bash
+make-folder-txt --split-method folder    # Split by folders
+make-folder-txt --split-method file      # Split by files  
+make-folder-txt --split-method size --split-size 5MB  # Split by file size
+```
+
+**Split Methods:**
+- **`folder`** - Creates separate files for each folder
+- **`file`** - Creates separate files for each individual file
+- **`size`** - Splits output when content exceeds specified size
+
+**Examples:**
+```bash
+# Split by folders - creates folder-name.txt for each folder
+make-folder-txt --split-method folder
+
+# Split by files - creates filename.txt for each file
+make-folder-txt --split-method file
+
+# Split by size - creates part-1.txt, part-2.txt, etc.
+make-folder-txt --split-method size --split-size 5MB
+
+# Combine with other options
+make-folder-txt --split-method size --split-size 2MB --ignore-folder node_modules
+```
+
+**Output Files:**
+- **Folder method**: `projectname-foldername.txt`
+- **File method**: `projectname-filename.txt`  
+- **Size method**: `projectname-part-1.txt`, `projectname-part-2.txt`, etc.
+
+**Note**: Splitting is not compatible with `--copy` flag.
 
 Ignore specific folders/files by name:
 

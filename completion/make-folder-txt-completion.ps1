@@ -14,6 +14,8 @@ Register-ArgumentCompleter -Native -CommandName 'make-folder-txt' -ScriptBlock {
         '--only-file', '-ofi',
         '--skip-large',
         '--no-skip',
+        '--split-method',
+        '--split-size',
         '--copy',
         '--force',
         '--install-completion',
@@ -54,6 +56,22 @@ Register-ArgumentCompleter -Native -CommandName 'make-folder-txt' -ScriptBlock {
         '--skip-large' {
             # Complete with common size formats
             $sizes = @('100KB', '200KB', '400KB', '500KB', '1MB', '5MB', '10MB', '100MB', '1GB', '5GB')
+            $matchingSizes = $sizes | Where-Object { $_ -like "*$currentArgument*" }
+            return $matchingSizes | ForEach-Object { 
+                [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', "Size: $_")
+            }
+        }
+        '--split-method' {
+            # Complete with split methods
+            $methods = @('folder', 'file', 'size')
+            $matchingMethods = $methods | Where-Object { $_ -like "*$currentArgument*" }
+            return $matchingMethods | ForEach-Object { 
+                [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', "Method: $_")
+            }
+        }
+        '--split-size' {
+            # Complete with common size formats
+            $sizes = @('1MB', '5MB', '10MB', '50MB', '100MB', '500MB', '1GB')
             $matchingSizes = $sizes | Where-Object { $_ -like "*$currentArgument*" }
             return $matchingSizes | ForEach-Object { 
                 [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', "Size: $_")
