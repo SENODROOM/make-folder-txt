@@ -24,8 +24,8 @@ Ever needed to share your entire project with ChatGPT, Claude, or a teammate —
 - ✅ Run it from any project directory — no arguments needed
 - ✅ Built-in help system with `--help` flag
 - ✅ **Built-in shell autocompletion** (installs automatically)
-- ✅ **File size control** with `--skip-large` and `--no-skip`
-- ✅ **Output splitting** by folders, files, or size
+- ✅ File size control with `--skip-large` and `--no-skip`
+- ✅ Output splitting by folders, files, or size
 - ✅ Copy to clipboard with `--copy` flag
 - ✅ Force include everything with `--force` flag
 - ✅ Generates a clean folder tree + every file's content

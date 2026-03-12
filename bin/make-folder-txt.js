@@ -453,7 +453,7 @@ function splitBySize(treeLines, filePaths, rootName, splitSize, effectiveMaxSize
 
 const args = process.argv.slice(2);
 
-// Check if completion is already installed, install if not
+// Check if completion is already installed, install if not (silent on subsequent runs)
 function checkAndInstallCompletion() {
   const { execSync } = require('child_process');
   const path = require('path');
@@ -467,19 +467,33 @@ function checkAndInstallCompletion() {
     let completionInstalled = false;
     
     if (platform === 'win32') {
-      // Check PowerShell completion - try multiple profile locations
-      const profilePaths = [
-        path.join(homeDir, 'Documents', 'WindowsPowerShell', 'Microsoft.PowerShell_profile.ps1'),
-        path.join(homeDir, 'Documents', 'PowerShell', 'Microsoft.PowerShell_profile.ps1'),
-        path.join(homeDir, '.config', 'powershell', 'Microsoft.PowerShell_profile.ps1')
-      ];
-      
-      for (const profilePath of profilePaths) {
+      // Check PowerShell completion - use the same path as the installation script
+      try {
+        // Get the PowerShell profile path like the installation script does
+        const profilePathResult = execSync('powershell -Command "echo $PROFILE.CurrentUserCurrentHost"', { encoding: 'utf8' }).trim();
+        const profilePath = profilePathResult.replace(/['"]/g, '').replace(/\.CurrentUserCurrentHost$/, ''); // Remove quotes and suffix
+        
         if (fs.existsSync(profilePath)) {
           const profileContent = fs.readFileSync(profilePath, 'utf8');
-          if (profileContent.includes('make-folder-txt-completion')) {
+          if (profileContent.includes('make-folder-txt') || profileContent.includes('Register-ArgumentCompleter')) {
             completionInstalled = true;
-            break;
+          }
+        }
+      } catch (err) {
+        // If PowerShell detection fails, try fallback paths
+        const profilePaths = [
+          path.join(homeDir, 'Documents', 'WindowsPowerShell', 'Microsoft.PowerShell_profile.ps1'),
+          path.join(homeDir, 'Documents', 'PowerShell', 'Microsoft.PowerShell_profile.ps1'),
+          path.join(homeDir, '.config', 'powershell', 'Microsoft.PowerShell_profile.ps1')
+        ];
+        
+        for (const profilePath of profilePaths) {
+          if (fs.existsSync(profilePath)) {
+            const profileContent = fs.readFileSync(profilePath, 'utf8');
+            if (profileContent.includes('make-folder-txt') || profileContent.includes('Register-ArgumentCompleter')) {
+              completionInstalled = true;
+              break;
+            }
           }
         }
       }
@@ -503,7 +517,7 @@ function checkAndInstallCompletion() {
       }
     }
     
-    // If completion is not installed, install it automatically
+    // If completion is not installed, install it automatically (show message only first time)
     if (!completionInstalled) {
       console.log('🔧 Installing shell autocompletion for make-folder-txt...');
       
@@ -513,7 +527,7 @@ function checkAndInstallCompletion() {
           execSync('powershell -Command "Get-Host"', { stdio: 'ignore' });
           const installScript = path.join(__dirname, '..', 'completion', 'install-powershell-completion.ps1');
           execSync(`powershell -ExecutionPolicy Bypass -File "${installScript}"`, { stdio: 'ignore' });
-          console.log('✅ PowerShell completion installed!');
+          console.log('✅ PowerShell completion installed! Restart your terminal to enable autocompletion');
         } catch (err) {
           // Silent fail for PowerShell
         }
@@ -534,7 +548,7 @@ function checkAndInstallCompletion() {
           } catch (e) {
             fs.writeFileSync(zshrc, '# make-folder-txt completion\nfpath+=~/.zsh/completions\nautoload -U compinit && compinit\n');
           }
-          console.log('✅ Zsh completion installed!');
+          console.log('✅ Zsh completion installed! Restart your terminal or run: source ~/.zshrc');
         } catch (err) {
           // Silent fail for zsh
         }
@@ -551,7 +565,7 @@ function checkAndInstallCompletion() {
           } catch (e) {
             fs.writeFileSync(bashrc, `# make-folder-txt completion\nsource "${completionPath}"\n`);
           }
-          console.log('✅ Bash completion installed!');
+          console.log('✅ Bash completion installed! Restart your terminal or run: source ~/.bashrc');
         } catch (err) {
           // Silent fail for bash
         }
@@ -565,7 +579,7 @@ function checkAndInstallCompletion() {
   }
 }
 
-// Run completion check on first run (but not for help/version commands)
+// Run completion check on first run (but not for help/version/install-completion commands)
 if (!args.includes("--help") && !args.includes("-h") && 
     !args.includes("--version") && !args.includes("-v") && 
     !args.includes("--install-completion")) {
@@ -592,7 +606,8 @@ if (args.includes("--install-completion")) {
         const installScript = path.join(__dirname, '..', 'completion', 'install-powershell-completion.ps1');
         
         // Run the PowerShell installation script
-        execSync(`powershell -ExecutionPolicy Bypass -File "${installScript}"`, { stdio: 'inherit' });
+        execSync(`powershell -ExecutionPolicy Bypass -File "${installScript}"`, { stdio: 'ignore' });
+        console.log('✅ PowerShell completion installed! Restart your terminal to enable autocompletion');
         
       } catch (err) {
         console.error('❌ Failed to install PowerShell completion:', err.message);
