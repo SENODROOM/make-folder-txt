@@ -464,116 +464,75 @@ function checkAndInstallCompletion() {
     const homeDir = os.homedir();
     const shell = process.env.SHELL || '';
     const platform = process.platform;
-    let completionInstalled = false;
+    
+    // Use a simple flag file to track installation
+    const flagFile = path.join(homeDir, '.make-folder-txt-completion-installed');
+    
+    if (fs.existsSync(flagFile)) {
+      // Completion already installed
+      return;
+    }
+    
+    // Install completion
+    console.log('🔧 Installing shell autocompletion for make-folder-txt...');
     
     if (platform === 'win32') {
-      // Check PowerShell completion - use the same path as the installation script
+      // Windows PowerShell
       try {
-        // Get the PowerShell profile path like the installation script does
-        const profilePathResult = execSync('powershell -Command "echo $PROFILE.CurrentUserCurrentHost"', { encoding: 'utf8' }).trim();
-        const profilePath = profilePathResult.replace(/['"]/g, '').replace(/\.CurrentUserCurrentHost$/, ''); // Remove quotes and suffix
-        
-        if (fs.existsSync(profilePath)) {
-          const profileContent = fs.readFileSync(profilePath, 'utf8');
-          if (profileContent.includes('make-folder-txt') || profileContent.includes('Register-ArgumentCompleter')) {
-            completionInstalled = true;
-          }
-        }
+        execSync('powershell -Command "Get-Host"', { stdio: 'ignore' });
+        const installScript = path.join(__dirname, '..', 'completion', 'install-powershell-completion.ps1');
+        execSync(`powershell -ExecutionPolicy Bypass -File "${installScript}"`, { stdio: 'ignore' });
+        console.log('✅ PowerShell completion installed! Restart your terminal to enable autocompletion');
       } catch (err) {
-        // If PowerShell detection fails, try fallback paths
-        const profilePaths = [
-          path.join(homeDir, 'Documents', 'WindowsPowerShell', 'Microsoft.PowerShell_profile.ps1'),
-          path.join(homeDir, 'Documents', 'PowerShell', 'Microsoft.PowerShell_profile.ps1'),
-          path.join(homeDir, '.config', 'powershell', 'Microsoft.PowerShell_profile.ps1')
-        ];
-        
-        for (const profilePath of profilePaths) {
-          if (fs.existsSync(profilePath)) {
-            const profileContent = fs.readFileSync(profilePath, 'utf8');
-            if (profileContent.includes('make-folder-txt') || profileContent.includes('Register-ArgumentCompleter')) {
-              completionInstalled = true;
-              break;
-            }
-          }
-        }
+        // Silent fail for PowerShell
       }
+      
     } else if (shell.includes('zsh')) {
-      // Check zsh completion
-      const zshrc = path.join(homeDir, '.zshrc');
-      if (fs.existsSync(zshrc)) {
-        const zshrcContent = fs.readFileSync(zshrc, 'utf8');
-        if (zshrcContent.includes('make-folder-txt')) {
-          completionInstalled = true;
+      // zsh
+      try {
+        const zshrc = path.join(homeDir, '.zshrc');
+        const completionDir = path.join(homeDir, '.zsh', 'completions');
+        execSync(`mkdir -p "${completionDir}"`, { stdio: 'ignore' });
+        const completionPath = path.join(__dirname, '..', 'completion', 'make-folder-txt-completion.zsh');
+        execSync(`cp "${completionPath}" "${completionDir}/_make-folder-txt"`, { stdio: 'ignore' });
+        
+        try {
+          const zshrcContent = fs.readFileSync(zshrc, 'utf8');
+          if (!zshrcContent.includes('fpath+=~/.zsh/completions')) {
+            fs.appendFileSync(zshrc, '\n# make-folder-txt completion\nfpath+=~/.zsh/completions\nautoload -U compinit && compinit\n');
+          }
+        } catch (e) {
+          fs.writeFileSync(zshrc, '# make-folder-txt completion\nfpath+=~/.zsh/completions\nautoload -U compinit && compinit\n');
         }
+        console.log('✅ Zsh completion installed! Restart your terminal or run: source ~/.zshrc');
+      } catch (err) {
+        // Silent fail for zsh
       }
+      
     } else {
-      // Check bash completion
-      const bashrc = path.join(homeDir, '.bashrc');
-      if (fs.existsSync(bashrc)) {
-        const bashrcContent = fs.readFileSync(bashrc, 'utf8');
-        if (bashrcContent.includes('make-folder-txt-completion')) {
-          completionInstalled = true;
+      // bash
+      try {
+        const bashrc = path.join(homeDir, '.bashrc');
+        const completionPath = path.join(__dirname, '..', 'completion', 'make-folder-txt-completion.bash');
+        try {
+          const bashrcContent = fs.readFileSync(bashrc, 'utf8');
+          if (!bashrcContent.includes('make-folder-txt-completion.bash')) {
+            fs.appendFileSync(bashrc, `\n# make-folder-txt completion\nsource "${completionPath}"\n`);
+          }
+        } catch (e) {
+          fs.writeFileSync(bashrc, `# make-folder-txt completion\nsource "${completionPath}"\n`);
         }
+        console.log('✅ Bash completion installed! Restart your terminal or run: source ~/.bashrc');
+      } catch (err) {
+        // Silent fail for bash
       }
     }
     
-    // If completion is not installed, install it automatically (show message only first time)
-    if (!completionInstalled) {
-      console.log('🔧 Installing shell autocompletion for make-folder-txt...');
-      
-      if (platform === 'win32') {
-        // Windows PowerShell
-        try {
-          execSync('powershell -Command "Get-Host"', { stdio: 'ignore' });
-          const installScript = path.join(__dirname, '..', 'completion', 'install-powershell-completion.ps1');
-          execSync(`powershell -ExecutionPolicy Bypass -File "${installScript}"`, { stdio: 'ignore' });
-          console.log('✅ PowerShell completion installed! Restart your terminal to enable autocompletion');
-        } catch (err) {
-          // Silent fail for PowerShell
-        }
-      } else if (shell.includes('zsh')) {
-        // zsh
-        try {
-          const zshrc = path.join(homeDir, '.zshrc');
-          const completionDir = path.join(homeDir, '.zsh', 'completions');
-          execSync(`mkdir -p "${completionDir}"`, { stdio: 'ignore' });
-          const completionPath = path.join(__dirname, '..', 'completion', 'make-folder-txt-completion.zsh');
-          execSync(`cp "${completionPath}" "${completionDir}/_make-folder-txt"`, { stdio: 'ignore' });
-          
-          try {
-            const zshrcContent = fs.readFileSync(zshrc, 'utf8');
-            if (!zshrcContent.includes('fpath+=~/.zsh/completions')) {
-              fs.appendFileSync(zshrc, '\n# make-folder-txt completion\nfpath+=~/.zsh/completions\nautoload -U compinit && compinit\n');
-            }
-          } catch (e) {
-            fs.writeFileSync(zshrc, '# make-folder-txt completion\nfpath+=~/.zsh/completions\nautoload -U compinit && compinit\n');
-          }
-          console.log('✅ Zsh completion installed! Restart your terminal or run: source ~/.zshrc');
-        } catch (err) {
-          // Silent fail for zsh
-        }
-      } else {
-        // bash
-        try {
-          const bashrc = path.join(homeDir, '.bashrc');
-          const completionPath = path.join(__dirname, '..', 'completion', 'make-folder-txt-completion.bash');
-          try {
-            const bashrcContent = fs.readFileSync(bashrc, 'utf8');
-            if (!bashrcContent.includes('make-folder-txt-completion.bash')) {
-              fs.appendFileSync(bashrc, `\n# make-folder-txt completion\nsource "${completionPath}"\n`);
-            }
-          } catch (e) {
-            fs.writeFileSync(bashrc, `# make-folder-txt completion\nsource "${completionPath}"\n`);
-          }
-          console.log('✅ Bash completion installed! Restart your terminal or run: source ~/.bashrc');
-        } catch (err) {
-          // Silent fail for bash
-        }
-      }
-      
-      console.log('💡 Restart your terminal to enable autocompletion');
-      console.log('');
-    }
+    // Create flag file to prevent re-installation
+    fs.writeFileSync(flagFile, 'installed');
+    console.log('💡 Restart your terminal to enable autocompletion');
+    console.log('');
+    
   } catch (err) {
     // Silent fail - don't interrupt the main functionality
   }
