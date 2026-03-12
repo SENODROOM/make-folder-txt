@@ -470,9 +470,7 @@ function createInteractiveConfig() {
       maxFileSize: '500KB',
       splitMethod: 'none',
       splitSize: '5MB',
-      copyToClipboard: false,
-      ignoreFolders: [],
-      ignoreFiles: []
+      copyToClipboard: false
     };
 
     let currentStep = 0;
@@ -526,16 +524,35 @@ function createInteractiveConfig() {
         transform: (value) => ['y', 'yes'].includes(value.toLowerCase())
       },
       {
+        key: 'addToTxtIgnore',
+        question: 'Add ignore patterns to .txtignore file? (y/n): ',
+        default: 'n',
+        validate: (value) => {
+          const answer = value.toLowerCase();
+          if (!['y', 'n', 'yes', 'no'].includes(answer)) return 'Please enter y/n or yes/no';
+          return true;
+        },
+        transform: (value) => ['y', 'yes'].includes(value.toLowerCase())
+      },
+      {
         key: 'ignoreFolders',
         question: 'Ignore folders (comma-separated, or press Enter to skip): ',
         default: '',
-        transform: (value) => value ? value.split(',').map(f => f.trim()).filter(f => f) : []
+        ask: () => config.addToTxtIgnore,
+        transform: (value) => {
+          if (!value || value.trim() === '') return [];
+          return value.split(',').map(f => f.trim()).filter(f => f);
+        }
       },
       {
         key: 'ignoreFiles',
         question: 'Ignore files (comma-separated, or press Enter to skip): ',
         default: '',
-        transform: (value) => value ? value.split(',').map(f => f.trim()).filter(f => f) : []
+        ask: () => config.addToTxtIgnore,
+        transform: (value) => {
+          if (!value || value.trim() === '') return [];
+          return value.split(',').map(f => f.trim()).filter(f => f);
+        }
       }
     ];
 
@@ -583,21 +600,19 @@ function createInteractiveConfig() {
 
     function saveConfig() {
       try {
-        // Create .txtconfig file
+        // Create .txtconfig file with proper formatting
         const configPath = path.join(process.cwd(), '.txtconfig');
         const configContent = `{
   "maxFileSize": "${config.maxFileSize}",
   "splitMethod": "${config.splitMethod}",
   "splitSize": "${config.splitSize}",
-  "copyToClipboard": ${config.copyToClipboard},
-  "ignoreFolders": ${JSON.stringify(config.ignoreFolders)},
-  "ignoreFiles": ${JSON.stringify(config.ignoreFiles)}
+  "copyToClipboard": ${config.copyToClipboard}
 }`;
 
         fs.writeFileSync(configPath, configContent);
 
-        // Update .txtignore if there are ignore patterns
-        if (config.ignoreFolders.length > 0 || config.ignoreFiles.length > 0) {
+        // Update .txtignore if user wants to add ignore patterns
+        if (config.addToTxtIgnore && (config.ignoreFolders.length > 0 || config.ignoreFiles.length > 0)) {
           const ignorePath = path.join(process.cwd(), '.txtignore');
           let ignoreContent = '';
           
@@ -622,7 +637,7 @@ function createInteractiveConfig() {
 
         console.log('\n✅ Configuration saved successfully!');
         console.log(`📄 Config file: ${configPath}`);
-        if (config.ignoreFolders.length > 0 || config.ignoreFiles.length > 0) {
+        if (config.addToTxtIgnore && (config.ignoreFolders.length > 0 || config.ignoreFiles.length > 0)) {
           console.log(`📝 Ignore patterns added to .txtignore`);
         }
         console.log('\n💡 You can now run: make-folder-txt --use-config');
@@ -696,16 +711,6 @@ async function main() {
     // Add copy to clipboard if true
     if (config.copyToClipboard) {
       newArgs.push('--copy');
-    }
-    
-    // Add ignore folders
-    if (config.ignoreFolders.length > 0) {
-      newArgs.push('--ignore-folder', ...config.ignoreFolders);
-    }
-    
-    // Add ignore files
-    if (config.ignoreFiles.length > 0) {
-      newArgs.push('--ignore-file', ...config.ignoreFiles);
     }
     
     // Replace args with config-based args
