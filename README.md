@@ -11,7 +11,7 @@
 
 Perfect for sharing your codebase with **AI tools**, **teammates**, or **code reviewers** — without zipping files or giving repo access.
 
-[Installation](#-installation) · [Usage](#-usage) · [Help](#-get-help) · [Copy to Clipboard](#-copy-to-clipboard) · [Force Include Everything](#-force-include-everything) · [Shell Autocompletion](#-shell-autocompletion) · [File Size Control](#-file-size-control) · [Output Splitting](#-output-splitting) · [Output Format](#-output-format) · [What Gets Skipped](#-what-gets-skipped) · [Contributing](#-contributing)
+[Installation](#-installation) · [Usage](#-usage) · [Help](#-get-help) · [Copy to Clipboard](#-copy-to-clipboard) · [Force Include Everything](#-force-include-everything) · [File Size Control](#-file-size-control) · [Output Splitting](#-output-splitting) · [Output Format](#-output-format) · [What Gets Skipped](#-what-gets-skipped) · [Contributing](#-contributing)
 
 </div>
 
@@ -23,7 +23,6 @@ Ever needed to share your entire project with ChatGPT, Claude, or a teammate —
 
 - ✅ Run it from any project directory — no arguments needed
 - ✅ Built-in help system with `--help` flag
-- ✅ **Built-in shell autocompletion** (installs automatically)
 - ✅ File size control with `--skip-large` and `--no-skip`
 - ✅ Output splitting by folders, files, or size
 - ✅ Copy to clipboard with `--copy` flag
@@ -90,50 +89,6 @@ The `--force` flag overrides all ignore patterns and includes:
 - System files and other normally skipped content
 
 Use this when you need a complete, unfiltered dump of your entire project.
-
-### ⚡ Shell Autocompletion (Built-in)
-
-```bash
-make-folder-txt  # Autocompletion installs automatically on first run
-```
-
-**🎉 No installation required!** The tool automatically installs shell autocompletion the first time you run it.
-
-**What gets installed automatically:**
-- **Flag completion**: `make-folder-txt --<TAB>` shows all available flags
-- **Folder completion**: `make-folder-txt --ignore-folder <TAB>` shows folders
-- **File completion**: `make-folder-txt --ignore-file <TAB>` shows files
-
-**Supported Shells:**
-- **Bash** - Linux/macOS/Windows (WSL)
-- **Zsh** - macOS/Linux
-- **PowerShell** - Windows (7+)
-
-**Example usage:**
-```bash
-$ make-folder-txt --ignore-folder b<TAB>
-# → completes to "bin/" if bin folder exists
-
-$ make-folder-txt --ignore-file p<TAB>
-# → completes to "package.json" if package.json exists
-```
-
-**Manual Installation (if needed):**
-```bash
-make-folder-txt --install-completion  # Force reinstall completion
-```
-
-**PowerShell Manual Setup:**
-```powershell
-# If auto-installation doesn't work, load manually:
-. .\completion\make-folder-txt-completion.ps1
-
-# Or add to your PowerShell profile for persistence:
-notepad $PROFILE
-# Add: . "C:\path\to\make-folder-txt\completion\make-folder-txt-completion.ps1"
-```
-
-The completion works out of the box - just run the tool once and restart your terminal!
 
 ### 📏 File Size Control
 
