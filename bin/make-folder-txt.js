@@ -3,6 +3,7 @@
 const fs = require("fs");
 const path = require("path");
 const { version } = require("../package.json");
+const { execSync } = require("child_process");
 
 // ── config ────────────────────────────────────────────────────────────────────
 const IGNORE_DIRS = new Set(["node_modules", ".git", ".next", "dist", "build", ".cache"]);
@@ -37,6 +38,34 @@ function readTxtIgnore(rootDir) {
   return ignorePatterns;
 }
 
+function copyToClipboard(text) {
+  try {
+    if (process.platform === 'win32') {
+      // Windows
+      execSync(`echo ${JSON.stringify(text).replace(/"/g, '""')} | clip`, { stdio: 'ignore' });
+    } else if (process.platform === 'darwin') {
+      // macOS
+      execSync(`echo ${JSON.stringify(text)} | pbcopy`, { stdio: 'ignore' });
+    } else {
+      // Linux (requires xclip or xsel)
+      try {
+        execSync(`echo ${JSON.stringify(text)} | xclip -selection clipboard`, { stdio: 'ignore' });
+      } catch {
+        try {
+          execSync(`echo ${JSON.stringify(text)} | xsel --clipboard --input`, { stdio: 'ignore' });
+        } catch {
+          console.warn('⚠️  Could not copy to clipboard. Install xclip or xsel on Linux.');
+          return false;
+        }
+      }
+    }
+    return true;
+  } catch (err) {
+    console.warn('⚠️  Could not copy to clipboard:', err.message);
+    return false;
+  }
+}
+
 function collectFiles(
   dir,
   rootDir,
@@ -54,6 +83,7 @@ function collectFiles(
     hasOnlyFilters = false,
     rootName = "",
     txtIgnore = new Set(),
+    force = false,
   } = options;
 
   let entries;
@@ -74,7 +104,7 @@ function collectFiles(
     const childIndent = indent + (isLast ? "    " : "│   ");
 
     if (entry.isDirectory()) {
-      if (ignoreDirs.has(entry.name)) {
+      if (!force && ignoreDirs.has(entry.name)) {
         if (!hasOnlyFilters) {
           lines.push(`${indent}${connector}${entry.name}/  [skipped]`);
         }
@@ -84,8 +114,8 @@ function collectFiles(
       // Get relative path for .txtignore pattern matching
       const relPathForIgnore = path.relative(rootDir, path.join(dir, entry.name)).split(path.sep).join("/");
       
-      // Check against .txtignore patterns (both dirname and relative path)
-      if (txtIgnore.has(entry.name) || txtIgnore.has(`${entry.name}/`) || txtIgnore.has(relPathForIgnore) || txtIgnore.has(`${relPathForIgnore}/`) || txtIgnore.has(`/${relPathForIgnore}/`)) {
+      // Check against .txtignore patterns (both dirname and relative path) unless force is enabled
+      if (!force && (txtIgnore.has(entry.name) || txtIgnore.has(`${entry.name}/`) || txtIgnore.has(relPathForIgnore) || txtIgnore.has(`${relPathForIgnore}/`) || txtIgnore.has(`/${relPathForIgnore}/`))) {
         if (!hasOnlyFilters) {
           lines.push(`${indent}${connector}${entry.name}/  [skipped]`);
         }
@@ -111,6 +141,7 @@ function collectFiles(
           hasOnlyFilters,
           rootName,
           txtIgnore,
+          force,
         },
       );
 
@@ -123,18 +154,18 @@ function collectFiles(
         filePaths.push(...child.filePaths);
       }
     } else {
-      if (ignoreFiles.has(entry.name)) return;
+      if (!force && ignoreFiles.has(entry.name)) return;
 
       // Get relative path for .txtignore pattern matching
       const relPathForIgnore = path.relative(rootDir, path.join(dir, entry.name)).split(path.sep).join("/");
       
-      // Check against .txtignore patterns (both filename and relative path)
-      if (txtIgnore.has(entry.name) || txtIgnore.has(relPathForIgnore) || txtIgnore.has(`/${relPathForIgnore}`)) {
+      // Check against .txtignore patterns (both filename and relative path) unless force is enabled
+      if (!force && (txtIgnore.has(entry.name) || txtIgnore.has(relPathForIgnore) || txtIgnore.has(`/${relPathForIgnore}`))) {
         return;
       }
 
-      // Ignore .txt files that match the folder name (e.g., foldername.txt)
-      if (entry.name.endsWith('.txt') && entry.name === `${rootName}.txt`) return;
+      // Ignore .txt files that match the folder name (e.g., foldername.txt) unless force is enabled
+      if (!force && entry.name.endsWith('.txt') && entry.name === `${rootName}.txt`) return;
 
       const shouldIncludeFile = !hasOnlyFilters || inSelectedFolder || onlyFiles.has(entry.name);
       if (!shouldIncludeFile) return;
@@ -148,12 +179,12 @@ function collectFiles(
   return { lines, filePaths, hasIncluded: filePaths.length > 0 || lines.length > 0 };
 }
 
-function readContent(absPath) {
+function readContent(absPath, force = false) {
   const ext = path.extname(absPath).toLowerCase();
-  if (BINARY_EXTS.has(ext)) return "[binary / skipped]";
+  if (!force && BINARY_EXTS.has(ext)) return "[binary / skipped]";
   try {
     const stat = fs.statSync(absPath);
-    if (stat.size > 500 * 1024) {
+    if (!force && stat.size > 500 * 1024) {
       return `[file too large: ${(stat.size / 1024).toFixed(1)} KB – skipped]`;
     }
     return fs.readFileSync(absPath, "utf8");
@@ -165,6 +196,68 @@ function readContent(absPath) {
 // ── main ──────────────────────────────────────────────────────────────────────
 
 const args = process.argv.slice(2);
+
+if (args.includes("--install-completion")) {
+  const { execSync } = require('child_process');
+  const path = require('path');
+  const os = require('os');
+  
+  try {
+    const homeDir = os.homedir();
+    const shell = process.env.SHELL || '';
+    
+    if (shell.includes('zsh')) {
+      // Install for zsh
+      const zshrc = path.join(homeDir, '.zshrc');
+      const completionDir = path.join(homeDir, '.zsh', 'completions');
+      
+      // Create completions directory if it doesn't exist
+      try {
+        execSync(`mkdir -p "${completionDir}"`, { stdio: 'ignore' });
+      } catch (e) {}
+      
+      // Copy completion file
+      const completionPath = path.join(__dirname, '..', 'completion', 'make-folder-txt-completion.zsh');
+      execSync(`cp "${completionPath}" "${completionDir}/_make-folder-txt"`, { stdio: 'ignore' });
+      
+      // Add to .zshrc if not already there
+      try {
+        const zshrcContent = fs.readFileSync(zshrc, 'utf8');
+        if (!zshrcContent.includes('fpath+=~/.zsh/completions')) {
+          fs.appendFileSync(zshrc, '\n# make-folder-txt completion\nfpath+=~/.zsh/completions\nautoload -U compinit && compinit\n');
+        }
+      } catch (e) {
+        // .zshrc doesn't exist, create it
+        fs.writeFileSync(zshrc, '# make-folder-txt completion\nfpath+=~/.zsh/completions\nautoload -U compinit && compinit\n');
+      }
+      
+      console.log('✅ Zsh completion installed! Restart your terminal or run: source ~/.zshrc');
+      
+    } else {
+      // Install for bash
+      const bashrc = path.join(homeDir, '.bashrc');
+      const completionPath = path.join(__dirname, '..', 'completion', 'make-folder-txt-completion.bash');
+      
+      // Add to .bashrc if not already there
+      try {
+        const bashrcContent = fs.readFileSync(bashrc, 'utf8');
+        if (!bashrcContent.includes('make-folder-txt-completion.bash')) {
+          fs.appendFileSync(bashrc, `\n# make-folder-txt completion\nsource "${completionPath}"\n`);
+        }
+      } catch (e) {
+        // .bashrc doesn't exist, create it
+        fs.writeFileSync(bashrc, `# make-folder-txt completion\nsource "${completionPath}"\n`);
+      }
+      
+      console.log('✅ Bash completion installed! Restart your terminal or run: source ~/.bashrc');
+    }
+  } catch (err) {
+    console.error('❌ Failed to install completion:', err.message);
+    process.exit(1);
+  }
+  
+  process.exit(0);
+}
 
 if (args.includes("-v") || args.includes("--version")) {
   console.log(`v${version}`);
@@ -181,19 +274,29 @@ Dump an entire project folder into a single readable .txt file.
   make-folder-txt [options]
 
 \x1b[33mOPTIONS\x1b[0m
-  --ignore-folder <names...>    Ignore specific folders by name
-  --ignore-file <names...>      Ignore specific files by name
-  --only-folder <names...>      Include only specific folders
-  --only-file <names...>        Include only specific files
-  --help, -h                    Show this help message
-  --version, -v                 Show version information
+  --ignore-folder, -ifo <names...>    Ignore specific folders by name
+  --ignore-file, -ifi <names...>      Ignore specific files by name
+  --only-folder, -ofo <names...>      Include only specific folders
+  --only-file, -ofi <names...>        Include only specific files
+  --copy                              Copy output to clipboard
+  --force                             Include everything (overrides all ignore patterns)
+  --install-completion                 Install shell autocompletion (bash/zsh)
+  --help, -h                          Show this help message
+  --version, -v                       Show version information
 
 \x1b[33mEXAMPLES\x1b[0m
   make-folder-txt
+  make-folder-txt --copy
+  make-folder-txt --force
+  make-folder-txt --install-completion
   make-folder-txt --ignore-folder node_modules dist
+  make-folder-txt -ifo node_modules dist
   make-folder-txt --ignore-file .env .env.local
+  make-folder-txt -ifi .env .env.local
   make-folder-txt --only-folder src docs
+  make-folder-txt -ofo src docs
   make-folder-txt --only-file package.json README.md
+  make-folder-txt -ofi package.json README.md
 
 \x1b[33m.TXTIGNORE FILE\x1b[0m
   Create a .txtignore file in your project root to specify files/folders to ignore.
@@ -214,11 +317,23 @@ const ignoreFiles = new Set(IGNORE_FILES);
 const onlyFolders = new Set();
 const onlyFiles = new Set();
 let outputArg = null;
+let copyToClipboardFlag = false;
+let forceFlag = false;
 
 for (let i = 0; i < args.length; i += 1) {
   const arg = args[i];
 
-  if (arg === "--ignore-folder") {
+  if (arg === "--copy") {
+    copyToClipboardFlag = true;
+    continue;
+  }
+
+  if (arg === "--force") {
+    forceFlag = true;
+    continue;
+  }
+
+  if (arg === "--ignore-folder" || arg === "-ifo") {
     let consumed = 0;
     while (i + 1 < args.length && !args[i + 1].startsWith("-")) {
       ignoreDirs.add(args[i + 1]);
@@ -232,8 +347,10 @@ for (let i = 0; i < args.length; i += 1) {
     continue;
   }
 
-  if (arg.startsWith("--ignore-folder=")) {
-    const value = arg.slice("--ignore-folder=".length);
+  if (arg.startsWith("--ignore-folder=") || arg.startsWith("-ifo=")) {
+    const value = arg.startsWith("--ignore-folder=") 
+      ? arg.slice("--ignore-folder=".length)
+      : arg.slice("-ifo=".length);
     if (!value) {
       console.error("Error: --ignore-folder requires a folder name.");
       process.exit(1);
@@ -242,7 +359,7 @@ for (let i = 0; i < args.length; i += 1) {
     continue;
   }
 
-  if (arg === "--ignore-file") {
+  if (arg === "--ignore-file" || arg === "-ifi") {
     let consumed = 0;
     while (i + 1 < args.length && !args[i + 1].startsWith("-")) {
       ignoreFiles.add(args[i + 1]);
@@ -256,8 +373,10 @@ for (let i = 0; i < args.length; i += 1) {
     continue;
   }
 
-  if (arg.startsWith("--ignore-file=")) {
-    const value = arg.slice("--ignore-file=".length);
+  if (arg.startsWith("--ignore-file=") || arg.startsWith("-ifi=")) {
+    const value = arg.startsWith("--ignore-file=") 
+      ? arg.slice("--ignore-file=".length)
+      : arg.slice("-ifi=".length);
     if (!value) {
       console.error("Error: --ignore-file requires a file name.");
       process.exit(1);
@@ -266,7 +385,7 @@ for (let i = 0; i < args.length; i += 1) {
     continue;
   }
 
-  if (arg === "--only-folder") {
+  if (arg === "--only-folder" || arg === "-ofo") {
     let consumed = 0;
     while (i + 1 < args.length && !args[i + 1].startsWith("-")) {
       onlyFolders.add(args[i + 1]);
@@ -280,8 +399,10 @@ for (let i = 0; i < args.length; i += 1) {
     continue;
   }
 
-  if (arg.startsWith("--only-folder=")) {
-    const value = arg.slice("--only-folder=".length);
+  if (arg.startsWith("--only-folder=") || arg.startsWith("-ofo=")) {
+    const value = arg.startsWith("--only-folder=") 
+      ? arg.slice("--only-folder=".length)
+      : arg.slice("-ofo=".length);
     if (!value) {
       console.error("Error: --only-folder requires a folder name.");
       process.exit(1);
@@ -290,7 +411,7 @@ for (let i = 0; i < args.length; i += 1) {
     continue;
   }
 
-  if (arg === "--only-file") {
+  if (arg === "--only-file" || arg === "-ofi") {
     let consumed = 0;
     while (i + 1 < args.length && !args[i + 1].startsWith("-")) {
       onlyFiles.add(args[i + 1]);
@@ -304,8 +425,10 @@ for (let i = 0; i < args.length; i += 1) {
     continue;
   }
 
-  if (arg.startsWith("--only-file=")) {
-    const value = arg.slice("--only-file=".length);
+  if (arg.startsWith("--only-file=") || arg.startsWith("-ofi=")) {
+    const value = arg.startsWith("--only-file=") 
+      ? arg.slice("--only-file=".length)
+      : arg.slice("-ofi=".length);
     if (!value) {
       console.error("Error: --only-file requires a file name.");
       process.exit(1);
@@ -348,7 +471,7 @@ const { lines: treeLines, filePaths } = collectFiles(
   ignoreFiles,
   onlyFolders,
   onlyFiles,
-  { hasOnlyFilters, rootName, txtIgnore },
+  { hasOnlyFilters, rootName, txtIgnore, force: forceFlag },
 );
 
 // ── build output ──────────────────────────────────────────────────────────────
@@ -380,7 +503,7 @@ filePaths.forEach(({ abs, rel }) => {
   out.push(subDivider);
   out.push(`FILE: ${rel}`);
   out.push(subDivider);
-  out.push(readContent(abs));
+  out.push(readContent(abs, forceFlag));
 });
 
 out.push("");
@@ -394,4 +517,14 @@ const sizeKB = (fs.statSync(outputFile).size / 1024).toFixed(1);
 console.log(`✅  Done!`);
 console.log(`📄  Output : ${outputFile}`);
 console.log(`📊  Size   : ${sizeKB} KB`);
-console.log(`🗂️   Files  : ${filePaths.length}\n`);
+console.log(`🗂️   Files  : ${filePaths.length}`);
+
+if (copyToClipboardFlag) {
+  const content = fs.readFileSync(outputFile, 'utf8');
+  const success = copyToClipboard(content);
+  if (success) {
+    console.log(`📋  Copied to clipboard!`);
+  }
+}
+
+console.log('');

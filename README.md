@@ -11,7 +11,7 @@
 
 Perfect for sharing your codebase with **AI tools**, **teammates**, or **code reviewers** — without zipping files or giving repo access.
 
-[Installation](#-installation) · [Usage](#-usage) · [Help](#-get-help) · [Output Format](#-output-format) · [What Gets Skipped](#-what-gets-skipped) · [Contributing](#-contributing)
+[Installation](#-installation) · [Usage](#-usage) · [Help](#-get-help) · [Copy to Clipboard](#-copy-to-clipboard) · [Force Include Everything](#-force-include-everything) · [Shell Autocompletion](#-shell-autocompletion) · [Output Format](#-output-format) · [What Gets Skipped](#-what-gets-skipped) · [Contributing](#-contributing)
 
 </div>
 
@@ -23,6 +23,9 @@ Ever needed to share your entire project with ChatGPT, Claude, or a teammate —
 
 - ✅ Run it from any project directory — no arguments needed
 - ✅ Built-in help system with `--help` flag
+- ✅ Shell autocompletion with `--install-completion`
+- ✅ Copy to clipboard with `--copy` flag
+- ✅ Force include everything with `--force` flag
 - ✅ Generates a clean folder tree + every file's content
 - ✅ `.txtignore` support (works like `.gitignore`)
 - ✅ Automatically skips `node_modules`, binaries, and junk files
@@ -61,13 +64,62 @@ make-folder-txt --version   # Show version info
 make-folder-txt -v          # Short version of version
 ```
 
+### 📋 Copy to Clipboard
+
+```bash
+make-folder-txt --copy      # Generate output and copy to clipboard
+make-folder-txt --copy --ignore-folder node_modules  # Copy filtered output
+```
+
+The `--copy` flag automatically copies the generated output to your system clipboard, making it easy to paste directly into AI tools, emails, or documents. Works on Windows, macOS, and Linux (requires `xclip` or `xsel` on Linux).
+
+### 🔥 Force Include Everything
+
+```bash
+make-folder-txt --force      # Include everything (overrides all ignore patterns)
+make-folder-txt --force --copy  # Include everything and copy to clipboard
+```
+
+The `--force` flag overrides all ignore patterns and includes:
+- `node_modules` and other ignored folders
+- Binary files (images, executables, etc.)
+- Large files (no 500 KB limit)
+- Files in `.txtignore`
+- System files and other normally skipped content
+
+Use this when you need a complete, unfiltered dump of your entire project.
+
+### ⚡ Shell Autocompletion
+
+```bash
+make-folder-txt --install-completion  # Install bash/zsh autocompletion
+```
+
+After installation, you'll get intelligent tab completion:
+- **Flag completion**: `make-folder-txt --<TAB>` shows all available flags
+- **Folder completion**: `make-folder-txt --ignore-folder <TAB>` shows folders
+- **File completion**: `make-folder-txt --ignore-file <TAB>` shows files
+
+**Example usage:**
+```bash
+$ make-folder-txt --ignore-folder b<TAB>
+# → completes to "bin/" if bin folder exists
+
+$ make-folder-txt --ignore-file p<TAB>
+# → completes to "package.json" if package.json exists
+```
+
+The completion automatically detects your shell (bash/zsh) and installs the appropriate scripts. Restart your terminal after installation.
+
 Ignore specific folders/files by name:
 
 ```bash
 make-folder-txt --ignore-folder examples extensions docs
+make-folder-txt -ifo examples extensions docs  # shorthand
 make-folder-txt --ignore-folder examples extensions "docs and explaination"
 make-folder-txt --ignore-folder examples extensions docs --ignore-file LICENSE
 make-folder-txt --ignore-file .env .env.local secrets.txt
+make-folder-txt -ifi .env .env.local secrets.txt  # shorthand
 ```
 
 Use a `.txtignore` file (works like `.gitignore`):
@@ -93,7 +145,9 @@ Include only specific folders/files by name (everything else is ignored):
 
 ```bash
 make-folder-txt --only-folder src docs
+make-folder-txt -ofo src docs  # shorthand
 make-folder-txt --only-file package.json README.md
+make-folder-txt -ofi package.json README.md  # shorthand
 make-folder-txt --only-folder src --only-file package.json
 ```
 
