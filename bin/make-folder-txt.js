@@ -643,7 +643,8 @@ function createInteractiveConfig() {
         if (config.addToTxtIgnore && (config.ignoreFolders.length > 0 || config.ignoreFiles.length > 0)) {
           console.log(`📝 Ignore patterns added to .txtignore`);
         }
-        console.log('\n💡 You can now run: make-folder-txt --use-config');
+        console.log('\n💡 Your settings will now be used automatically!');
+        console.log('🔄 Run --delete-config to reset to defaults');
 
       } catch (err) {
         console.error('❌ Error saving configuration:', err.message);
@@ -692,7 +693,31 @@ async function main() {
     process.exit(0);
   }
 
-  if (args.includes("--use-config")) {
+  if (args.includes("--delete-config")) {
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const configPath = path.join(process.cwd(), '.txtconfig');
+      
+      if (fs.existsSync(configPath)) {
+        fs.unlinkSync(configPath);
+        console.log('✅ Configuration file deleted successfully!');
+        console.log('🔄 Tool will now use default settings');
+      } else {
+        console.log('ℹ️  No configuration file found - already using defaults');
+      }
+    } catch (err) {
+      console.error('❌ Error deleting configuration:', err.message);
+    }
+    process.exit(0);
+  }
+
+  // Auto-use config if it exists and no other flags are provided
+  const configPath = path.join(process.cwd(), '.txtconfig');
+  const hasConfig = fs.existsSync(configPath);
+  const hasOtherFlags = args.length > 0 && !args.includes('--help') && !args.includes('-h') && !args.includes('--version') && !args.includes('-v');
+  
+  if (hasConfig && !hasOtherFlags) {
     const config = loadConfig();
     
     // Apply config to command line arguments
@@ -718,6 +743,7 @@ async function main() {
     
     // Replace args with config-based args
     args.splice(0, args.length, ...newArgs);
+    console.log('🔧 Using saved configuration (use --delete-config to reset to defaults)');
   }
 
   if (args.includes("--help") || args.includes("-h")) {
@@ -740,7 +766,7 @@ Dump an entire project folder into a single readable .txt file.
   --copy                              Copy output to clipboard
   --force                             Include everything (overrides all ignore patterns)
   --make-config                       Create interactive configuration
-  --use-config                        Use configuration from .txtconfig file
+  --delete-config                     Delete configuration and reset to defaults
   --help, -h                          Show this help message
   --version, -v                       Show version information
 
@@ -763,7 +789,7 @@ Dump an entire project folder into a single readable .txt file.
   make-folder-txt --only-file package.json README.md
   make-folder-txt -ofi package.json README.md
   make-folder-txt --make-config
-  make-folder-txt --use-config
+  make-folder-txt --delete-config
 
 \x1b[33m.TXTIGNORE FILE\x1b[0m
   Create a .txtignore file in your project root to specify files/folders to ignore.
