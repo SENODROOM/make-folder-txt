@@ -159,7 +159,11 @@ function collectFiles(
       }
 
       const explicitlySelectedFolder = hasOnlyFilters && onlyFolders.has(entry.name);
-      const shouldIncludeDir = !hasOnlyFilters || (rootOnlyInclude ? false : child.hasIncluded) || explicitlySelectedFolder;
+      // For root-only include, only include if we're at the root level and it matches
+      const shouldIncludeDir = !hasOnlyFilters || 
+        (rootOnlyInclude && dir === rootDir && onlyFolders.has(entry.name)) || 
+        (!rootOnlyInclude && child.hasIncluded) || 
+        explicitlySelectedFolder;
 
       if (shouldIncludeDir) {
         lines.push(`${indent}${connector}${entry.name}/`);
