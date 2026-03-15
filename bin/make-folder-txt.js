@@ -1061,7 +1061,12 @@ Dump an entire project folder into a single readable .txt file.
       ignoreFiles,
       onlyFolders,
       onlyFiles,
-      { rootName, txtIgnore, force: forceFlag }
+      { 
+        rootName, 
+        txtIgnore, 
+        force: forceFlag,
+        hasOnlyFilters: onlyFolders.size > 0 || onlyFiles.size > 0
+      }
     );
 
     // ── build output filename ───────────────────────────────────────────────────────────
