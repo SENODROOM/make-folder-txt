@@ -127,14 +127,19 @@ function collectFiles(
       }
 
       const childPath = path.join(dir, entry.name);
-      const childInSelectedFolder = inSelectedFolder || onlyFolders.has(entry.name);
+      // When rootOnlyInclude is active, a folder only "counts" if it's directly under root
+      const folderIsSelected = rootOnlyInclude
+        ? (dir === rootDir && onlyFolders.has(entry.name))
+        : onlyFolders.has(entry.name);
+
+      const childInSelectedFolder = inSelectedFolder || folderIsSelected;
       const childLines = [];
       const childFiles = [];
       
-      // If rootOnlyInclude is true, only include root-level items
+      // If rootOnlyInclude is true, skip recursing into non-selected subdirectories
       let child;
-      if (rootOnlyInclude && dir !== rootDir) {
-        // Don't recurse into subdirectories when rootOnlyInclude is true
+      if (rootOnlyInclude && dir !== rootDir && !inSelectedFolder) {
+        // Don't recurse unless already inside a selected folder
         child = { lines: [], filePaths: [], hasIncluded: false };
       } else {
         child = collectFiles(
@@ -158,12 +163,10 @@ function collectFiles(
         );
       }
 
-      const explicitlySelectedFolder = hasOnlyFilters && onlyFolders.has(entry.name);
-      // For root-only include, only include if we're at the root level and it matches
+      // Include the dir if: no filters active, or it's explicitly selected, or (non-root-only) a child matched
       const shouldIncludeDir = !hasOnlyFilters || 
-        (rootOnlyInclude && dir === rootDir && onlyFolders.has(entry.name)) || 
-        (!rootOnlyInclude && child.hasIncluded) || 
-        explicitlySelectedFolder;
+        folderIsSelected || 
+        (!rootOnlyInclude && child.hasIncluded);
 
       if (shouldIncludeDir) {
         lines.push(`${indent}${connector}${entry.name}/`);
@@ -1001,9 +1004,12 @@ Dump an entire project folder into a single readable .txt file.
       if (arg === "--only-folder" || arg === "-ofo") {
         let consumed = 0;
         while (i + 1 < args.length && !args[i + 1].startsWith("-")) {
-          // Normalize the folder name
           let folderName = args[i + 1];
           folderName = folderName.replace(/\\/g, '/'); // Convert backslashes to forward slashes
+          // Detect leading / as root-only signal (same as --only-file behavior)
+          if (folderName.startsWith("/")) {
+            rootOnlyInclude = true;
+          }
           folderName = folderName.replace(/^\.?\//, ''); // Remove leading ./ or /
           folderName = folderName.replace(/\/+$/, ''); // Remove trailing slashes
           onlyFolders.add(folderName);
@@ -1025,9 +1031,12 @@ Dump an entire project folder into a single readable .txt file.
           console.error("Error: --only-folder requires a folder name.");
           process.exit(1);
         }
-        // Normalize the folder name
         let folderName = value;
         folderName = folderName.replace(/\\/g, '/'); // Convert backslashes to forward slashes
+        // Detect leading / as root-only signal
+        if (folderName.startsWith("/")) {
+          rootOnlyInclude = true;
+        }
         folderName = folderName.replace(/^\.?\//, ''); // Remove leading ./ or /
         folderName = folderName.replace(/\/+$/, ''); // Remove trailing slashes
         onlyFolders.add(folderName);
