@@ -866,6 +866,149 @@ function loadConfig() {
   }
 }
 
+function sanitizeRootName(name) {
+  return name
+    .replace(/[<>:"/\\|?*\x00-\x1F]/g, "-")
+    .replace(/^\.+$/, "restored-folder")
+    .trim();
+}
+
+function getReverseTargetPath(args) {
+  const reverseIndex = args.indexOf("--reverse");
+  const nextArg = args[reverseIndex + 1];
+
+  if (nextArg && !nextArg.startsWith("-")) {
+    return path.resolve(process.cwd(), nextArg);
+  }
+
+  return path.join(process.cwd(), `${path.basename(process.cwd())}.txt`);
+}
+
+function parseReverseDump(content, txtPath) {
+  const lines = content.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+  const dividerLine = /^={80}$/;
+  const fileDividerLine = /^-{80}$/;
+  const startLine = lines.find((line) => line.startsWith("START OF FOLDER: "));
+  const rootNameFromHeader = startLine
+    ? startLine
+        .slice("START OF FOLDER: ".length)
+        .replace(/\s+\(Part \d+\)$/, "")
+        .trim()
+    : "";
+  const rootName =
+    sanitizeRootName(rootNameFromHeader) ||
+    sanitizeRootName(path.basename(txtPath, path.extname(txtPath)));
+  const files = [];
+
+  for (let i = 0; i < lines.length; i += 1) {
+    if (
+      !lines[i].startsWith("FILE: ") ||
+      i === 0 ||
+      i + 1 >= lines.length ||
+      !fileDividerLine.test(lines[i - 1]) ||
+      !fileDividerLine.test(lines[i + 1])
+    ) {
+      continue;
+    }
+
+    const rel = lines[i]
+      .slice("FILE: ".length)
+      .replace(/\\/g, "/")
+      .replace(/^\/+/, "");
+
+    if (!rel || rel.includes("\0")) {
+      continue;
+    }
+
+    let end = lines.length;
+    for (let j = i + 2; j < lines.length; j += 1) {
+      const startsNextFile =
+        fileDividerLine.test(lines[j]) &&
+        j + 2 < lines.length &&
+        lines[j + 1].startsWith("FILE: ") &&
+        fileDividerLine.test(lines[j + 2]);
+      const startsFooter =
+        dividerLine.test(lines[j]) &&
+        j + 1 < lines.length &&
+        (lines[j + 1].startsWith("END OF FOLDER: ") ||
+          lines[j + 1].startsWith("END OF FILE: "));
+
+      if (startsNextFile || startsFooter) {
+        end = j;
+        break;
+      }
+    }
+
+    const contentLines = lines.slice(i + 2, end);
+    if (contentLines[contentLines.length - 1] === "") {
+      contentLines.pop();
+    }
+
+    files.push({
+      rel,
+      content: contentLines.join("\n"),
+    });
+  }
+
+  return { rootName, files };
+}
+
+function reverseTxtToFolder(txtPath, options = {}) {
+  if (!fs.existsSync(txtPath)) {
+    console.error(`Error: Reverse input file not found: ${txtPath}`);
+    process.exit(1);
+  }
+
+  const content = fs.readFileSync(txtPath, "utf8");
+  const { rootName, files } = parseReverseDump(content, txtPath);
+
+  if (files.length === 0) {
+    console.error(
+      "Error: No file content blocks found. Is this a make-folder-txt output file?",
+    );
+    process.exit(1);
+  }
+
+  const outputDir = path.join(process.cwd(), rootName);
+  const outputRoot = path.resolve(outputDir);
+  let written = 0;
+  let skipped = 0;
+
+  fs.mkdirSync(outputRoot, { recursive: true });
+
+  files.forEach(({ rel, content: fileContent }) => {
+    const destination = path.resolve(outputRoot, rel);
+
+    if (
+      destination !== outputRoot &&
+      !destination.startsWith(outputRoot + path.sep)
+    ) {
+      skipped += 1;
+      return;
+    }
+
+    if (fs.existsSync(destination) && !options.force) {
+      skipped += 1;
+      return;
+    }
+
+    fs.mkdirSync(path.dirname(destination), { recursive: true });
+    fs.writeFileSync(destination, fileContent, "utf8");
+    written += 1;
+  });
+
+  console.log(`✅  Done!`);
+  console.log(`📁  Folder : ${outputRoot}`);
+  console.log(`📄  Source : ${txtPath}`);
+  console.log(`🗂️   Files  : ${written}`);
+
+  if (skipped > 0) {
+    console.log(
+      `⚠️  Skipped: ${skipped} file${skipped === 1 ? "" : "s"} (use --force to overwrite existing files)`,
+    );
+  }
+}
+
 // ── main ──────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -898,6 +1041,12 @@ async function main() {
     } catch (err) {
       console.error("❌ Error deleting configuration:", err.message);
     }
+    process.exit(0);
+  }
+
+  if (args.includes("--reverse")) {
+    const txtPath = getReverseTargetPath(args);
+    reverseTxtToFolder(txtPath, { force: args.includes("--force") });
     process.exit(0);
   }
 
@@ -961,6 +1110,7 @@ Dump an entire project folder into a single readable .txt file.
   --split-size <size>                 Split output when size exceeds limit (requires --split-method size)
   --copy                              Copy output to clipboard
   --force                             Include everything (overrides all ignore patterns)
+  --reverse [file.txt]                Recreate a folder from a make-folder-txt output file
   --make-config                       Create interactive configuration (with optional .gitignore setup)
   --delete-config                     Delete configuration and reset to defaults
   --help, -h                          Show this help message
@@ -976,6 +1126,9 @@ Dump an entire project folder into a single readable .txt file.
   make-folder-txt --split-method folder
   make-folder-txt --split-method file
   make-folder-txt --split-method size --split-size 5MB
+  make-folder-txt --reverse
+  make-folder-txt --reverse my-project.txt
+  make-folder-txt --reverse my-project.txt --force
   make-folder-txt --ignore-folder node_modules dist
   make-folder-txt -ifo node_modules dist
   make-folder-txt --ignore-file .env .env.local

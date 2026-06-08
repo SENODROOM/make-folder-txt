@@ -25,6 +25,7 @@ Ever needed to share your entire project with ChatGPT, Claude, or a teammate —
 - ✅ Built-in help system with `--help` flag
 - ✅ File size control with `--skip-large` and `--no-skip`
 - ✅ Output splitting by folders, files, or size
+- ✅ Reverse mode to recreate folders from generated `.txt` files
 - ✅ Copy to clipboard with `--copy` flag
 - ✅ Force include everything with `--force` flag
 - ✅ Generates a clean folder tree + every file's content
@@ -159,6 +160,16 @@ make-folder-txt --split-method size --split-size 2MB --ignore-folder node_module
 - **Size method**: `projectname-part-1.txt`, `projectname-part-2.txt`, etc.
 
 **Note**: Splitting is not compatible with `--copy` flag.
+
+### 🔄 Reverse a Txt Back Into a Folder
+
+```bash
+make-folder-txt --reverse                 # Restore from <current-folder>.txt
+make-folder-txt --reverse my-project.txt  # Restore from a specific dump
+make-folder-txt --reverse my-project.txt --force  # Overwrite existing restored files
+```
+
+The `--reverse` flag reads a `.txt` file created by `make-folder-txt` and recreates its files inside a folder named after the original dump. Existing files are skipped unless you add `--force`.
 
 Ignore specific folders/files by name:
 
